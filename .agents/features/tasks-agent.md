@@ -10,8 +10,8 @@ Esta feature (`src/features/tasks/`) maneja TODO lo relacionado con escribir, ed
 
 ## Límites de la IA (Tokens)
 Si estás modificando esta feature:
-- **DEBES** restringir tus lecturas (view_file) a la carpeta `frontend/src/features/tasks/` y ocasionalmente a `frontend/src/shared/ui/`. 
-- **NO DEBES** leer `features/templates` ni `app/` a menos que exista un bug directo de integración.
+- **DEBES** restringir tus lecturas (view_file) a la carpeta `src/features/tasks/` y ocasionalmente a `src/shared/ui/`.
+- **NO DEBES** leer `features/templates` ni `pages/` a menos que exista un bug directo de integración.
 
 ## Archivos Clave a Modificar
 - `ui/TaskEditor.tsx`: Interfaz principal.

@@ -9,7 +9,7 @@ Esta feature (`src/features/templates/`) administra la creación, edición y per
 - **Persistencia:** (MVP: LocalStorage). Futuro: Supabase.
 
 ## Límites de la IA (Tokens)
-- **DEBES** leer y escribir EXCLUSIVAMENTE en `frontend/src/features/templates/`.
+- **DEBES** leer y escribir EXCLUSIVAMENTE en `src/features/templates/`.
 - **NO LEAS** `features/tasks/`. Si una plantilla es seleccionada, esta feature simplemente actualiza el store global y confía en que `tasks` reaccionará.
 
 ## Archivos Clave a Modificar
