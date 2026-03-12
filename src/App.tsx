@@ -32,12 +32,19 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
           </Route>
 
-          {/* Rutas protegidas con Sidebar */}
-          <Route element={<ProtectedRoute />}>
+          {/* Rutas compartidas (Admin y Editor) */}
+          <Route element={<ProtectedRoute allowedRoles={['Administrador', 'Editor']} />}>
             <Route element={<MainLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="editor" element={<EditorPage />} />
+              <Route path="editor/:storyId/:taskId" element={<EditorPage />} />
+            </Route>
+          </Route>
+
+          {/* Rutas exclusivas de Administrador */}
+          <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
+            <Route element={<MainLayout />}>
               <Route path="stories" element={<StoriesPage />} />
               <Route path="stories/:id" element={<StoryDetailPage />} />
               <Route path="sprints" element={<SprintsPage />} />

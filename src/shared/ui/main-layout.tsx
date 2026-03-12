@@ -1,4 +1,5 @@
 import { Sidebar } from "@/shared/ui/sidebar"
+import { CommandPalette } from "@/shared/ui/command-palette"
 import { Outlet } from "react-router-dom"
 
 export function MainLayout() {
@@ -10,6 +11,7 @@ export function MainLayout() {
           <Outlet />
         </main>
       </div>
+      <CommandPalette />
     </div>
   )
 }

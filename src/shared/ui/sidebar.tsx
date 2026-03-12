@@ -52,26 +52,26 @@ const navSections: { title: string; items: NavItem[] }[] = [
    ────────────────────────────────────────── */
 const sb = {
   dark: {
-    bg:     "#0e1018",   // más oscuro que body dark (#161a24)
-    text:   "#868c9f",
-    muted:  "#484d60",
-    border: "#1c1f2b",
-    hover:  "#1c1f2b",
-    card:   "#14161f",
+    bg:     "#131722",   // Aclarado un poco (mantenido dark-slate)
+    text:   "#8e95a8",
+    muted:  "#545a6e",
+    border: "#222736",
+    hover:  "#222736",
+    card:   "#1a1e2c",
   },
   light: {
-    bg:     "#111520",   // sidebar siempre oscuro pero con blue-slate
-    text:   "#8890a5",
-    muted:  "#505568",
-    border: "#1e2130",
-    hover:  "#1e2130",
-    card:   "#181b28",
+    bg:     "#1b2030",   // Un poco más claro para la versión light
+    text:   "#939ab0",
+    muted:  "#5d647a",
+    border: "#282e40",
+    hover:  "#282e40",
+    card:   "#212738",
   },
 }
 
 export function Sidebar() {
   const [open, setOpen] = useState(true)
-  const logout = useAuthStore((s) => s.logout)
+  const { username, role, logout } = useAuthStore()
   const { theme, setTheme } = useTheme()
   const isDark = theme === "dark"
   const c = isDark ? sb.dark : sb.light
@@ -79,6 +79,18 @@ export function Sidebar() {
   function toggleCollapse() {
     setOpen((v) => !v)
   }
+
+  // Permisos según el rol
+  const filteredNavSections = navSections.map(section => ({
+    ...section,
+    items: section.items.filter(item => {
+      if (role === 'Editor') {
+        const allowedPaths = ['/templates', '/editor']
+        return allowedPaths.includes(item.path)
+      }
+      return true
+    })
+  })).filter(section => section.items.length > 0)
 
   return (
     <aside
@@ -99,7 +111,7 @@ export function Sidebar() {
               BioTask
             </span>
             <span style={{ color: c.muted }} className="text-[9px] font-semibold tracking-[.18em] uppercase mt-0.5">
-              Pro Edition
+              Standard Edition
             </span>
           </div>
         )}
@@ -110,7 +122,7 @@ export function Sidebar() {
 
       {/* ── Navigation ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-5 px-3 space-y-6">
-        {navSections.map((section) => (
+        {filteredNavSections.map((section) => (
           <div key={section.title} className="space-y-1">
             {open && (
               <p style={{ color: c.muted }} className="px-3 mb-2 text-[10px] font-bold tracking-[.25em] select-none">
@@ -208,8 +220,8 @@ export function Sidebar() {
                 open ? "h-10 w-10" : "h-9 w-9"
               )}
             >
-              <span className={cn("font-black text-primary/80", open ? "text-sm" : "text-xs")}>
-                DU
+              <span className={cn("font-black text-primary/80", open ? "text-sm" : "text-xs uppercase")}>
+                {username?.substring(0, 2).toUpperCase() || 'DU'}
               </span>
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 block h-3 w-3 rounded-full bg-emerald-500 ring-2" style={{ borderColor: c.bg }} />
@@ -217,14 +229,14 @@ export function Sidebar() {
 
           {open && (
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-bold text-white truncate">Dev User</p>
-              <p style={{ color: c.muted }} className="text-[10px] font-medium truncate">Conectado</p>
+              <p className="text-[13px] font-bold text-white truncate capitalize">{username || 'Usuario'}</p>
+              <p style={{ color: c.muted }} className="text-[10px] font-medium truncate">{role || 'Conectado'}</p>
             </div>
           )}
 
           {open && (
             <div className="flex items-center gap-0.5 shrink-0">
-              <DataBackup />
+              {role !== 'Editor' && <DataBackup />}
               <button
                 onClick={() => { logout() }}
                 style={{ color: c.muted }}

@@ -22,6 +22,7 @@ export const useTasksStore = create<TasksState>()(
 
       startNewTask: (template, storyId) => set({
         currentTask: {
+          id: undefined,
           templateId: template?.id || undefined,
           storyId: storyId || undefined,
           code: '',
@@ -37,6 +38,8 @@ export const useTasksStore = create<TasksState>()(
           },
           status: 'draft',
           estimatedHours: 0,
+          priority: 'medium',
+          checklists: [],
           createdAt: new Date().toISOString(),
         }
       }),

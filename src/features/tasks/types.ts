@@ -1,4 +1,5 @@
 import type { TaskType, ServiceDetail } from '../templates/types';
+import type { ChecklistItem } from '../stories/types';
 
 export interface SectionData {
   objective: string;
@@ -8,6 +9,7 @@ export interface SectionData {
 }
 
 export interface TaskDraft {
+  id?: string;
   templateId?: string;
   storyId?: string;
   code?: string;
@@ -21,8 +23,11 @@ export interface TaskDraft {
   screenPath?: string;
   featureName?: string;
   
-  status: 'draft' | 'completed';
+  status: 'draft' | 'completed' | 'pending' | 'in_progress' | 'archived';
   estimatedHours?: number;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  dueDate?: string;
+  checklists?: ChecklistItem[];
   jiraContent?: string;
   createdAt: string;
 }

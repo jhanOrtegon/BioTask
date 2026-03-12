@@ -14,6 +14,13 @@ export type TimeLog = {
   endedAt?: string
 }
 
+// ── Checklist Item ──
+export interface ChecklistItem {
+  id: string
+  title: string
+  completed: boolean
+}
+
 // ── Tarea rastreada dentro de una historia ──
 export interface TrackedTask {
   id: string
@@ -27,6 +34,9 @@ export interface TrackedTask {
   data: SectionData
   jiraContent?: string
   status: 'pending' | 'in_progress' | 'completed' | 'archived'
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  dueDate?: string
+  checklists?: ChecklistItem[]
   timeSpent?: number // In seconds
   estimatedHours?: number
   sprintId?: string

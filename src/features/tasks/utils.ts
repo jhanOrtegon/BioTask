@@ -9,13 +9,25 @@ export const markdownToJira = (draft: TaskDraft): string => {
   lines.push('# ' + title);
   lines.push('');
 
-  // ── Metadatos ──
   lines.push('| Campo | Valor |');
   lines.push('|-------|-------|');
+  lines.push('| Código | ' + (draft.code || 'N/A') + ' |');
   lines.push('| Tipo | ' + type.toUpperCase() + ' |');
+  lines.push('| Prioridad | ' + (draft.priority || 'medium').toUpperCase() + ' |');
+  if (draft.estimatedHours) lines.push('| Estimación | ' + String(draft.estimatedHours) + 'h |');
+  if (draft.dueDate) lines.push('| Vencimiento | ' + draft.dueDate + ' |');
   if (featureName) lines.push('| Funcionalidad | ' + featureName + ' |');
   if (screenPath) lines.push('| Ruta / Pantalla | `' + screenPath + '` |');
   lines.push('');
+
+  // ── Checklist ──
+  if (draft.checklists && draft.checklists.length > 0) {
+    lines.push('## 📋 Checklist');
+    draft.checklists.forEach(item => {
+      lines.push(`${item.completed ? '- [/]' : '- [ ]'} ${item.title}`);
+    });
+    lines.push('');
+  }
 
   // ── Objetivo ──
   if (data.objective) {
@@ -79,27 +91,35 @@ export const markdownToJira = (draft: TaskDraft): string => {
   return lines.join('\n');
 };
 
-export const generateConventionalCommit = (draft: TrackedTask | TaskDraft): string => {
+export const generateConventionalCommit = (draft: TrackedTask | TaskDraft, lang: 'es' | 'en' = 'en'): string => {
   const task = draft as TrackedTask & TaskDraft;
   const { data, title, type, featureName, code } = task;
 
-  const typeMap: Record<string, string> = {
+  const typeMapEn: Record<string, string> = {
     feature: 'feat',
     bug: 'fix',
     chore: 'chore',
     refactor: 'refactor',
   };
 
-  const prefix = typeMap[type] || 'feat';
+  const typeMapEs: Record<string, string> = {
+    feature: 'funcionalidad',
+    bug: 'corrección',
+    chore: 'tarea',
+    refactor: 'refactorización',
+  };
+
+  const prefix = lang === 'es' ? (typeMapEs[type] || 'tarea') : (typeMapEn[type] || 'feat');
   const scopeStr = featureName ? `(${featureName})` : '';
   const codeStr = code ? `${code} ` : '';
-  const titleStr = title || 'Actualización de tarea';
+  const titleStr = title || (lang === 'es' ? 'Actualización de tarea' : 'Task update');
 
   const header = `${prefix}${scopeStr}: ${codeStr}${titleStr}`;
 
   let body = '';
   if (data.objective) {
-    body = `\n\n${data.objective}`;
+    const label = lang === 'es' ? 'Objetivo' : 'Objective';
+    body = `\n\n${label}: ${data.objective}`;
   }
 
   return `${header}${body}`;

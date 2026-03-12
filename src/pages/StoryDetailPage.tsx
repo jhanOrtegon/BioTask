@@ -13,11 +13,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/ui/table'
+import {
+  Dialog,
+  DialogContent,
+} from '@/shared/ui/dialog'
 import { CommentDialog } from '@/shared/ui/comment-dialog'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { AuditTimeline } from '@/features/stories/ui/AuditTimeline'
-import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2 } from 'lucide-react'
+import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Lock, Eye } from 'lucide-react'
+import { DynamicTaskEditor } from '@/features/tasks/ui/DynamicTaskEditor'
+import type { TaskDraft } from '@/features/tasks/types'
 import { toast } from 'sonner'
 import {
   flexRender,
@@ -44,7 +50,6 @@ export function StoryDetailPage() {
   const { 
     stories, 
     archiveTask, 
-    updateTask, 
     startTaskTimer, 
     pauseTaskTimer, 
     stopTaskTimer 
@@ -54,7 +59,7 @@ export function StoryDetailPage() {
 
   const [showTimeline, setShowTimeline] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState<{ taskId: string; title: string } | null>(null)
-  const [editDialog, setEditDialog] = useState<{ taskId: string; title: string } | null>(null)
+  const [viewTask, setViewTask] = useState<TrackedTask | null>(null)
 
   const activeTasks = useMemo(() => story?.tasks.filter(t => t.status !== 'archived') || [], [story?.tasks])
 
@@ -65,12 +70,6 @@ export function StoryDetailPage() {
     setArchiveDialog(null)
   }
 
-  const handleEditComment = (comment: string) => {
-    if (!editDialog || !story) return
-    updateTask(story.id, editDialog.taskId, {}, comment)
-    toast.success('Tarea actualizada', { description: comment })
-    setEditDialog(null)
-  }
 
   const columns = useMemo<ColumnDef<TrackedTask>[]>(() => [
     {
@@ -183,38 +182,72 @@ export function StoryDetailPage() {
         return (
           <div className="flex justify-end gap-1">
             <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
-                    onClick={() => { setEditDialog({ taskId: task.id, title: task.title }) }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Registrar cambio</p></TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg"
-                    onClick={() => { setArchiveDialog({ taskId: task.id, title: task.title }) }}
-                  >
-                    <Archive className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Eliminar tarea</p></TooltipContent>
-              </Tooltip>
+              {task.status === 'pending' ? (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg"
+                        onClick={() => { setViewTask(task) }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Ver Detalle</p></TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+                        onClick={() => { 
+                          void navigate(`/editor/${task.storyId}/${task.id}`)
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Editar Tarea</p></TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg"
+                        onClick={() => { setArchiveDialog({ taskId: task.id, title: task.title }) }}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Eliminar tarea</p></TooltipContent>
+                  </Tooltip>
+                </>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="h-8 w-8 flex items-center justify-center text-muted-foreground/30 cursor-not-allowed">
+                      <Lock className="h-3.5 w-3.5" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">
+                      {task.status === 'in_progress'
+                        ? 'No se puede editar mientras está en curso'
+                        : 'Esta tarea ya fue completada'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </TooltipProvider>
           </div>
         )
       },
     },
-  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer])
+  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, navigate])
 
   const table = useReactTable({
     data: activeTasks,
@@ -308,7 +341,7 @@ export function StoryDetailPage() {
               className="gap-2 font-bold shadow-lg shadow-primary/25 active:scale-95 transition-all"
               onClick={() => {
                 startNewTask(undefined, story.id)
-                void navigate('/editor')
+                void navigate(`/editor`)
               }}
             >
               <Plus className="h-4 w-4" /> Nueva Tarea
@@ -361,7 +394,7 @@ export function StoryDetailPage() {
                       <p className="text-sm font-medium">No hay tareas en esta historia.</p>
                       <Button variant="outline" size="sm" onClick={() => {
                         startNewTask(undefined, story.id)
-                        void navigate('/editor')
+                        void navigate(`/editor`)
                       }} className="mt-2 text-xs font-bold rounded-lg">
                         Crear la primera tarea
                       </Button>
@@ -374,6 +407,15 @@ export function StoryDetailPage() {
         </div>
       </div>
 
+      {/* Task Details Dialog */}
+      <Dialog open={!!viewTask} onOpenChange={(open: boolean) => { if (!open) setViewTask(null) }}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto border-border bg-popover shadow-2xl rounded-2xl p-0">
+          <div className="p-8">
+            <DynamicTaskEditor readOnly task={viewTask as unknown as TaskDraft} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Archive Task Comment Dialog */}
       <CommentDialog
         open={!!archiveDialog}
@@ -385,16 +427,6 @@ export function StoryDetailPage() {
         onConfirm={handleArchiveTask}
       />
 
-      {/* Edit Task Comment Dialog */}
-      <CommentDialog
-        open={!!editDialog}
-        onOpenChange={(open) => { if (!open) setEditDialog(null) }}
-        title="Registrar Cambio"
-        description={`Documenta qué cambio realizaste en "${editDialog?.title || ''}".`}
-        variant="info"
-        confirmLabel="Guardar Cambio"
-        onConfirm={handleEditComment}
-      />
     </div>
   )
 }

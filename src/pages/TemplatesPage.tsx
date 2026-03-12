@@ -21,6 +21,7 @@ import {
 } from "@/shared/ui/dialog"
 import { TemplateForm } from "@/features/templates/ui/TemplateForm"
 import { Breadcrumbs } from "@/shared/ui/breadcrumbs"
+import { useAuthStore } from "@/features/auth/store"
 import {
   flexRender,
   getCoreRowModel,
@@ -29,6 +30,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table"
 
 export function TemplatesPage() {
+  const { role } = useAuthStore()
   const { templates, removeTemplate, addTemplate, updateTemplate } = useTemplatesStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
@@ -111,7 +113,7 @@ export function TemplatesPage() {
                 size="icon" 
                 className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
                 title="Clonar datos" 
-                onClick={() => addTemplate({ ...template, title: `${template.title} (Copia)` })}
+                onClick={() => { addTemplate({ ...template, title: `${template.title} (Copia)` }) }}
               >
                 <FileJson className="h-4 w-4" />
               </Button>
@@ -119,7 +121,7 @@ export function TemplatesPage() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10 rounded-lg"
-                onClick={() => handleOpenEdit(template)}
+                onClick={() => { handleOpenEdit(template) }}
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -127,7 +129,7 @@ export function TemplatesPage() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                onClick={() => handleDelete(template.id)}
+                onClick={() => { handleDelete(template.id) }}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -136,12 +138,19 @@ export function TemplatesPage() {
         },
       },
     ],
-    [addTemplate] // handleDelete depends on removeTemplate from store, but we can just leave it or destructure it properly if needed, it works via closure here because it's redefined on every render for simplicity, but standard useMemo deps:
+    [addTemplate, role] // handleDelete depends on removeTemplate from store, but we can just leave it or destructure it properly if needed, it works via closure here because it's redefined on every render for simplicity, but standard useMemo deps:
   )
+
+  const finalColumns = useMemo(() => {
+    if (role === 'Editor') {
+      return columns.filter(col => col.id !== 'actions')
+    }
+    return columns
+  }, [columns, role])
 
   const table = useReactTable({
     data: templates,
-    columns,
+    columns: finalColumns,
     getCoreRowModel: getCoreRowModel(),
   })
 
@@ -164,13 +173,15 @@ export function TemplatesPage() {
             con secciones y servicios configurados.
           </p>
         </div>
-        <Button 
-          size="lg" 
-          className="shrink-0 h-11 px-6 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 transition-all active:scale-95" 
-          onClick={handleOpenCreate}
-        >
-          <Plus className="mr-2 h-5 w-5" /> Nueva Plantilla
-        </Button>
+        {role !== 'Editor' && (
+          <Button 
+            size="lg" 
+            className="shrink-0 h-11 px-6 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 transition-all active:scale-95" 
+            onClick={handleOpenCreate}
+          >
+            <Plus className="mr-2 h-5 w-5" /> Nueva Plantilla
+          </Button>
+        )}
       </header>
 
       {/* ── TanStack Table Container ── */}
@@ -214,9 +225,11 @@ export function TemplatesPage() {
                     <div className="flex flex-col items-center justify-center text-muted-foreground space-y-3">
                       <Layers className="h-8 w-8 opacity-20" />
                       <p className="text-sm font-medium">No hay plantillas creadas todavía.</p>
-                      <Button variant="outline" size="sm" onClick={handleOpenCreate} className="mt-2 text-xs font-bold rounded-lg border-border hover:bg-secondary">
-                        Crear la primera
-                      </Button>
+                      {role !== 'Editor' && (
+                        <Button variant="outline" size="sm" onClick={handleOpenCreate} className="mt-2 text-xs font-bold rounded-lg border-border hover:bg-secondary">
+                          Crear la primera
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

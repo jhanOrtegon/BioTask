@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { useStoriesStore } from '@/features/stories/store'
+import { useAuthStore } from '@/features/auth/store'
 import { useTasksStore } from '@/features/tasks/store'
 import { BookOpen, FileText, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as PieChartIcon } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -9,13 +10,14 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
 
 export function Dashboard() {
+  const { role } = useAuthStore()
   const navigate = useNavigate()
   const { stories } = useStoriesStore()
   const { startNewTask } = useTasksStore()
 
   const activeStories = stories.filter(s => s.status === 'active')
   const totalTasks = stories.reduce((acc, story) => acc + story.tasks.filter(t => t.status !== 'archived').length, 0)
-  
+
   const handleQuickTask = () => {
     startNewTask() // Sin plantilla
     void navigate('/editor')
@@ -24,18 +26,18 @@ export function Dashboard() {
   // --- Analíticas ---
   // 1. Distribución de Tipos de Tareas
   const allTasksArray = stories.flatMap(s => s.tasks.filter(t => t.status !== 'archived'))
-  
-  const typeCount = allTasksArray.reduce((acc, task) => {
+
+  const typeCount = allTasksArray.reduce<Record<string, number>>((acc, task) => {
     acc[task.type] = (acc[task.type] || 0) + 1
     return acc
-  }, {} as Record<string, number>)
-  
+  }, {})
+
   const pieData = Object.entries(typeCount).map(([name, value]) => ({ name, value }))
 
   const barData = activeStories.slice(0, 5).map(story => {
     const totalSpentSeconds = story.tasks.reduce((acc, t) => acc + (t.timeSpent || 0), 0)
     const totalEstimatedHours = story.tasks.reduce((acc, t) => acc + (t.estimatedHours || 0), 0)
-    
+
     return {
       name: story.code,
       Invertido: Number((totalSpentSeconds / 3600).toFixed(1)),
@@ -46,7 +48,7 @@ export function Dashboard() {
   return (
     <div className="h-full overflow-y-auto bg-background p-8">
       <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-        
+
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">
@@ -59,12 +61,16 @@ export function Dashboard() {
             </p>
           </div>
           <div className="flex gap-3 shrink-0">
-            <Button variant="outline" size="lg" className="h-12 border-primary/20 hover:bg-primary/5 font-bold" onClick={handleQuickTask}>
-              <PenLine className="mr-2 h-5 w-5" /> Tarea Rápida
-            </Button>
-            <Button size="lg" className="h-12 shadow-lg shadow-primary/20 font-bold" onClick={() => { void navigate('/stories') }}>
-              <Plus className="mr-2 h-5 w-5" /> Nueva Historia
-            </Button>
+            {role !== 'Editor' && (
+              <>
+                <Button variant="outline" size="lg" className="h-12 border-primary/20 hover:bg-primary/5 font-bold" onClick={handleQuickTask}>
+                  <PenLine className="mr-2 h-5 w-5" /> Tarea Rápida
+                </Button>
+                <Button size="lg" className="h-12 shadow-lg shadow-primary/20 font-bold" onClick={() => { void navigate('/stories') }}>
+                  <Plus className="mr-2 h-5 w-5" /> Nueva Historia
+                </Button>
+              </>
+            )}
           </div>
         </header>
 
@@ -82,7 +88,7 @@ export function Dashboard() {
               <p className="text-xs text-muted-foreground font-medium">En tu backlog actual</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-card to-blue-500/5 border-blue-500/10 shadow-sm">
             <CardHeader className="pb-2">
               <CardDescription className="font-bold uppercase tracking-wider text-xs">Tareas Activas</CardDescription>
@@ -114,7 +120,7 @@ export function Dashboard() {
 
         {/* Analíticas Gráficas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-          
+
           <Card className="border-border/50 shadow-sm bg-card">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <div>
@@ -138,11 +144,12 @@ export function Dashboard() {
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {pieData.map((_entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        {pieData.map((_, index) => (
+                          // eslint-disable-next-line @typescript-eslint/no-deprecated
+                          <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <Tooltip
                         contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}
                         itemStyle={{ color: 'var(--foreground)', fontWeight: 'bold' }}
                       />
@@ -173,7 +180,7 @@ export function Dashboard() {
                     <BarChart data={barData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                       <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                      <Tooltip 
+                      <Tooltip
                         cursor={{ fill: 'var(--muted)' }}
                         contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}
                       />
@@ -202,7 +209,7 @@ export function Dashboard() {
               Ver todas
             </Button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeStories.slice(0, 4).map(story => (
               <Card key={story.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => { void navigate(`/stories/${story.id}`) }}>
@@ -226,7 +233,7 @@ export function Dashboard() {
                 <BookOpen className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
                 <h3 className="text-sm font-bold text-foreground">No tienes historias activas</h3>
                 <p className="text-xs text-muted-foreground mt-1 mb-4">Comienza creando una nueva User Story para agrupar tus tareas.</p>
-                <Button size="sm" onClick={() => { void navigate('/stories') }}>Nueva Historia</Button>
+                {role !== 'Editor' && <Button size="sm" onClick={() => { void navigate('/stories') }}>Nueva Historia</Button>}
               </div>
             )}
           </div>
