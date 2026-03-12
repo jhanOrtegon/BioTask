@@ -23,7 +23,7 @@ import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 import { CommentDialog } from '@/shared/ui/comment-dialog'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
-import { BookOpen, Plus, Archive, RotateCcw, Eye } from 'lucide-react'
+import { BookOpen, Plus, Archive, RotateCcw, Eye, Edit } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -46,11 +46,19 @@ function formatDate(iso: string) {
 }
 
 export function StoriesPage() {
-  const { stories, addStory, archiveStory, restoreStory } = useStoriesStore()
+  const { stories, addStory, updateStory, archiveStory, restoreStory } = useStoriesStore()
   const navigate = useNavigate()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [archiveDialogId, setArchiveDialogId] = useState<string | null>(null)
+
+  const [editStoryId, setEditStoryId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({
+    code: '',
+    title: '',
+    module: '',
+    description: ''
+  })
 
   // ── Form state ──
   const [formCode, setFormCode] = useState('')
@@ -82,14 +90,35 @@ export function StoriesPage() {
     if (!archiveDialogId) return
     const story = stories.find(s => s.id === archiveDialogId)
     archiveStory(archiveDialogId, comment)
-    toast.warning('Historia eliminada', { description: `${story?.code} — ${comment}` })
+    toast.warning('Historia eliminada', { description: `${story?.code || ''} — ${comment}` })
     setArchiveDialogId(null)
   }
 
   const handleRestore = (id: string) => {
     const story = stories.find(s => s.id === id)
     restoreStory(id, 'Restaurada manualmente')
-    toast.success('Historia restaurada', { description: story?.code })
+    toast.success('Historia restaurada', { description: story?.code || '' })
+  }
+
+  const handleOpenEdit = (story: Story) => {
+    setEditStoryId(story.id)
+    setEditForm({
+      code: story.code,
+      title: story.title,
+      module: story.module,
+      description: story.description || ''
+    })
+  }
+
+  const handleUpdate = () => {
+    if (!editStoryId) return
+    if (!editForm.code.trim() || !editForm.title.trim() || !editForm.module.trim()) {
+      toast.error('Campos obligatorios vacíos')
+      return
+    }
+    updateStory(editStoryId, editForm, 'Historia editada desde la lista')
+    toast.success('Historia actualizada')
+    setEditStoryId(null)
   }
 
   const columns = useMemo<ColumnDef<Story>[]>(() => [
@@ -161,6 +190,22 @@ export function StoriesPage() {
                 <TooltipContent><p>Ver detalle</p></TooltipContent>
               </Tooltip>
 
+              {story.status === 'active' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+                      onClick={() => { handleOpenEdit(story) }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Editar historia</p></TooltipContent>
+                </Tooltip>
+              )}
+
               {story.status === 'active' ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -195,7 +240,7 @@ export function StoriesPage() {
         )
       },
     },
-  ], [navigate])
+  ], [navigate, handleOpenEdit, handleRestore])
 
   const table = useReactTable({
     data: filteredStories,
@@ -256,7 +301,7 @@ export function StoriesPage() {
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
@@ -357,6 +402,65 @@ export function StoriesPage() {
             <Button onClick={handleCreate} className="font-bold">
               <Plus className="mr-2 h-4 w-4" /> Crear Historia
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editStoryId} onOpenChange={(open) => { if (!open) setEditStoryId(null) }}>
+        <DialogContent className="max-w-2xl border-border bg-popover shadow-2xl rounded-2xl">
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Edit className="h-5 w-5 text-primary" /> Editar Historia
+              </h2>
+              <p className="text-sm text-muted-foreground">Modifica los datos de la User Story.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Código Jira</Label>
+                  <Input 
+                    value={editForm.code} 
+                    onChange={e => { setEditForm(prev => ({ ...prev, code: e.target.value.toUpperCase() })) }}
+                    placeholder="PROJ-123"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Módulo</Label>
+                  <Input 
+                    value={editForm.module} 
+                    onChange={e => { setEditForm(prev => ({ ...prev, module: e.target.value })) }}
+                    placeholder="Compras"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Título de la Historia</Label>
+                <Input 
+                  value={editForm.title} 
+                  onChange={e => { setEditForm(prev => ({ ...prev, title: e.target.value })) }}
+                  placeholder="Ej: Gestionar órdenes de compra"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Descripción</Label>
+                <Textarea 
+                  value={editForm.description} 
+                  onChange={e => { setEditForm(prev => ({ ...prev, description: e.target.value })) }}
+                  placeholder="Descripción opcional..."
+                  className="min-h-[100px] bg-background"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button variant="outline" onClick={() => { setEditStoryId(null) }}>Cancelar</Button>
+              <Button onClick={handleUpdate} className="font-bold">Guardar Cambios</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

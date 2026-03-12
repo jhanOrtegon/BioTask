@@ -28,7 +28,20 @@ export function DataBackup() {
       for (const key of EXPORT_KEYS) {
         const item = localStorage.getItem(key)
         if (item) {
-          exportData[key] = JSON.parse(item)
+          const data = JSON.parse(item)
+          
+          // Auto-Sanitation for Stories and Tasks
+          if (key === 'stories-storage' && data.state?.stories) {
+            data.state.stories = data.state.stories.map((story: any) => ({
+              ...story,
+              tasks: story.tasks.map((task: any) => ({
+                ...task,
+                storyId: task.storyId || story.id // Ensure task has a storyId
+              }))
+            }))
+          }
+          
+          exportData[key] = data
         }
       }
       

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import type { DropResult } from '@hello-pangea/dnd'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useStoriesStore } from '@/features/stories/store'
@@ -8,6 +8,7 @@ import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { useNavigate } from 'react-router-dom'
 import { useTasksStore } from '@/features/tasks/store'
+import { toast } from 'sonner'
 
 type ColumnType = 'pending' | 'in_progress' | 'completed'
 
@@ -28,6 +29,11 @@ export function BoardPage() {
       .filter(s => s.status === 'active')
       .flatMap(s => s.tasks.map(t => ({ ...t, storyCode: s.code, storyTitle: s.title, storyId: s.id })))
       .filter(t => t.status !== 'archived')
+  }, [stories])
+
+  const findStoryIdForTask = useCallback((taskId: string) => {
+    const story = stories.find(s => s.tasks.some(t => t.id === taskId))
+    return story?.id
   }, [stories])
 
   const onDragEnd = (result: DropResult) => {
@@ -120,9 +126,15 @@ export function BoardPage() {
                                   ${snapshot.isDragging ? 'shadow-lg ring-2 ring-primary/50 rotate-2' : ''}
                                 `}
                                 onClick={(e) => {
-                                  // Prevents triggering nav if dragging
                                   if (e.defaultPrevented) return
-                                  void navigate(`/editor/${task.storyId}/${task.id}`)
+                                  // Deep recovery: search all stories if storyId is missing
+                                  const sId = (task as { storyId?: string }).storyId || findStoryIdForTask(task.id)
+                                  if (sId && task.id) {
+                                    void navigate(`/editor/${sId}/${task.id}`)
+                                  } else {
+                                    console.error("Missing IDs on Kanban Card after deep recovery:", { storyId: sId, taskId: task.id, task })
+                                    toast.error("Error: ID de tarea o historia no encontrado")
+                                  }
                                 }}
                               >
                                 <div className="space-y-3">

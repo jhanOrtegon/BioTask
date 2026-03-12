@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStoriesStore } from '@/features/stories/store'
 import { useTasksStore } from '@/features/tasks/store'
@@ -18,6 +18,9 @@ import {
   DialogContent,
 } from '@/shared/ui/dialog'
 import { CommentDialog } from '@/shared/ui/comment-dialog'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { Textarea } from '@/shared/ui/textarea'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { AuditTimeline } from '@/features/stories/ui/AuditTimeline'
@@ -55,11 +58,33 @@ export function StoryDetailPage() {
     stopTaskTimer 
   } = useStoriesStore()
   const { startNewTask } = useTasksStore()
+
+  const findStoryIdForTask = useCallback((taskId: string) => {
+    const storyMatch = stories.find(s => s.tasks.some(t => t.id === taskId))
+    return storyMatch?.id
+  }, [stories])
   const story = stories.find(s => s.id === id)
 
   const [showTimeline, setShowTimeline] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState<{ taskId: string; title: string } | null>(null)
   const [viewTask, setViewTask] = useState<TrackedTask | null>(null)
+  const [editStoryDialog, setEditStoryDialog] = useState(false)
+  
+  const [storyForm, setStoryForm] = useState({
+    code: story?.code || '',
+    title: story?.title || '',
+    module: story?.module || '',
+    description: story?.description || ''
+  })
+
+  const { updateStory } = useStoriesStore()
+
+  const handleUpdateStory = () => {
+    if (!story) return
+    updateStory(story.id, storyForm, 'Historia actualizada desde el detalle')
+    setEditStoryDialog(false)
+    toast.success('Historia actualizada')
+  }
 
   const activeTasks = useMemo(() => story?.tasks.filter(t => t.status !== 'archived') || [], [story?.tasks])
 
@@ -204,7 +229,14 @@ export function StoryDetailPage() {
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
                         onClick={() => { 
-                          void navigate(`/editor/${task.storyId}/${task.id}`)
+                          // Deep recovery strategy
+                          const sId = task.storyId || story?.id || findStoryIdForTask(task.id)
+                          if (sId && task.id) {
+                            void navigate(`/editor/${sId}/${task.id}`)
+                          } else {
+                            toast.error("Error: ID de tarea o historia no encontrado")
+                            console.error("Missing IDs on Story Detail after deep recovery:", { storyId: sId, taskId: task.id, task })
+                          }
                         }}
                       >
                         <Edit className="h-4 w-4" />
@@ -247,7 +279,7 @@ export function StoryDetailPage() {
         )
       },
     },
-  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, navigate])
+  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, navigate, findStoryIdForTask])
 
   const table = useReactTable({
     data: activeTasks,
@@ -329,6 +361,14 @@ export function StoryDetailPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-xs font-bold"
+              onClick={() => { setEditStoryDialog(true) }}
+            >
+              <Edit className="h-3.5 w-3.5" /> Editar Historia
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -426,6 +466,64 @@ export function StoryDetailPage() {
         confirmLabel="Eliminar Tarea"
         onConfirm={handleArchiveTask}
       />
+
+      <Dialog open={editStoryDialog} onOpenChange={setEditStoryDialog}>
+        <DialogContent className="max-w-2xl border-border bg-popover shadow-2xl rounded-2xl">
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Edit className="h-5 w-5 text-primary" /> Editar Historia
+              </h2>
+              <p className="text-sm text-muted-foreground">Actualiza los detalles de la User Story.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Código Jira</Label>
+                  <Input 
+                    value={storyForm.code} 
+                    onChange={e => { setStoryForm(prev => ({ ...prev, code: e.target.value.toUpperCase() })) }}
+                    placeholder="PROJ-123"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Módulo</Label>
+                  <Input 
+                    value={storyForm.module} 
+                    onChange={e => { setStoryForm(prev => ({ ...prev, module: e.target.value })) }}
+                    placeholder="Compras"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Título de la Historia</Label>
+                <Input 
+                  value={storyForm.title} 
+                  onChange={e => { setStoryForm(prev => ({ ...prev, title: e.target.value })) }}
+                  placeholder="Ej: Gestionar órdenes de compra"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Descripción</Label>
+                <Textarea 
+                  value={storyForm.description} 
+                  onChange={e => { setStoryForm(prev => ({ ...prev, description: e.target.value })) }}
+                  placeholder="Descripción opcional..."
+                  className="min-h-[100px] bg-background"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button variant="outline" onClick={() => { setEditStoryDialog(false) }}>Cancelar</Button>
+              <Button onClick={handleUpdateStory} className="font-bold">Guardar Cambios</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

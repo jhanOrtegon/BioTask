@@ -24,7 +24,7 @@ export function EditorPage() {
   const { stories, addTaskToStory, updateTask } = useStoriesStore()
   const navigate = useNavigate()
   const { storyId, taskId } = useParams<{ storyId?: string; taskId?: string }>()
-  
+
   const [showPreviewPanel, setShowPreviewPanel] = useState(false)
   const [previewTab, setPreviewTab] = useState<'jira' | 'visual'>('visual')
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
@@ -34,12 +34,9 @@ export function EditorPage() {
   // Cargar tarea si vienen IDs por la URL
   useEffect(() => {
     if (storyId && taskId) {
-      // Esperar a que las historias estén cargadas si el store está vacío
-      if (stories.length === 0) return
-
       const story = stories.find(s => s.id === storyId)
       const task = story?.tasks.find(t => t.id === taskId)
-      
+
       if (task) {
         // Solo establecer si es diferente a la actual para evitar bucles
         if (!currentTask || currentTask.id !== task.id) {
@@ -105,7 +102,7 @@ export function EditorPage() {
         // Actualizar data
         const data: Record<string, unknown> = {}
         if (typeof json.objective === 'string') data.objective = json.objective
-        
+
         const mapServices = (services: unknown[]) => services.map((s) => {
           const service = s as Record<string, unknown>
           return {
@@ -121,7 +118,7 @@ export function EditorPage() {
         }
         if (Array.isArray(json.requirements)) data.requirements = json.requirements
         if (Array.isArray(json.validations)) data.validations = json.validations
-        
+
         // También soporta data envuelto
         const wrappedData = json.data as Record<string, unknown> | undefined
         if (wrappedData) {
@@ -179,10 +176,10 @@ export function EditorPage() {
       ...rest,
       status: status === 'draft' ? undefined : status
     }
-    
+
     updateTask(currentTask.storyId, currentTask.id, updateData, comment)
     toast.success('Tarea actualizada', { description: currentTask.title })
-    
+
     resetTask()
     void navigate(`/stories/${currentTask.storyId}`)
   }
@@ -231,7 +228,7 @@ export function EditorPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="space-y-0.5">
-            <h2 className="text-lg font-bold tracking-tight">Editor de Molde Dynamic</h2>
+            <h2 className="text-lg font-bold tracking-tight">Editor</h2>
             <p className="text-xs text-muted-foreground">Completa los campos para generar tu Jira</p>
           </div>
         </div>
@@ -262,7 +259,7 @@ export function EditorPage() {
                     {
                       name: "Login OAuth",
                       url: "/api/v1/auth/oauth/login",
-                      method: "POST",
+             method: "POST",
                       params: "",
                       payload: {
                         provider: "google",
@@ -361,10 +358,10 @@ export function EditorPage() {
             <Eraser className="h-3.5 w-3.5" /> Limpiar Todo
           </Button>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => { 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
               resetTask()
               if (currentTask.storyId) {
                 void navigate(`/stories/${currentTask.storyId}`)
@@ -405,17 +402,17 @@ export function EditorPage() {
                   Previsualización
                 </h3>
                 <div className="flex bg-muted/50 p-1 rounded-lg border border-border/50">
-                  <Button 
-                    variant={previewTab === 'visual' ? 'secondary' : 'ghost'} 
-                    size="sm" 
+                  <Button
+                    variant={previewTab === 'visual' ? 'secondary' : 'ghost'}
+                    size="sm"
                     className="h-7 text-[10px] font-bold px-3"
                     onClick={() => { setPreviewTab('visual') }}
                   >
                     Visual
                   </Button>
-                  <Button 
-                    variant={previewTab === 'jira' ? 'secondary' : 'ghost'} 
-                    size="sm" 
+                  <Button
+                    variant={previewTab === 'jira' ? 'secondary' : 'ghost'}
+                    size="sm"
                     className="h-7 text-[10px] font-bold px-3"
                     onClick={() => { setPreviewTab('jira') }}
                   >
@@ -423,7 +420,7 @@ export function EditorPage() {
                   </Button>
                 </div>
               </div>
-              
+
               {previewTab === 'visual' ? <DynamicTaskEditor readOnly /> : <JiraPreview />}
             </div>
           </div>
@@ -442,7 +439,7 @@ export function EditorPage() {
           <JiraPreview />
         </DialogContent>
       </Dialog>
-      
+
       {/* Modal de Justificación */}
       <CommentDialog
         open={justificationModalOpen}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStoriesStore } from '@/features/stories/store'
 import type { TrackedTask, Story } from '@/features/stories/types'
@@ -26,6 +26,7 @@ import {
   DialogContent,
 } from '@/shared/ui/dialog'
 import { CheckSquare, BookOpen, Eye, Edit, ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 import { DynamicTaskEditor } from '@/features/tasks/ui/DynamicTaskEditor'
 import type { TaskDraft } from '@/features/tasks/types'
 import {
@@ -65,6 +66,11 @@ export function TasksPage() {
     // Filter by status (Archived / Active)
     return tasks.filter(t => showArchived ? t.status === 'archived' : t.status !== 'archived')
   }, [stories, selectedStoryId, showArchived])
+
+  const findStoryIdForTask = useCallback((taskId: string) => {
+    const story = stories.find(s => s.tasks.some(t => t.id === taskId))
+    return story?.id
+  }, [stories])
 
   const columns = useMemo<ColumnDef<TrackedTask & { storyData: Story }>[]>(() => [
     {
@@ -179,7 +185,16 @@ export function TasksPage() {
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
               onClick={() => { 
-                void navigate(`/editor/${task.storyId}/${task.id}`)
+                // Deep recovery strategy
+                const storyDataId = (task as { storyData?: { id: string } }).storyData?.id
+                const sId = storyDataId || task.storyId || findStoryIdForTask(task.id)
+                
+                if (sId && task.id) {
+                  void navigate(`/editor/${sId}/${task.id}`)
+                } else {
+                  toast.error("Error: ID de tarea o historia no encontrado")
+                  console.error("Missing IDs on Tasks List after deep recovery:", { storyId: sId, taskId: task.id, task })
+                }
               }}
               title="Editar Tarea"
             >
@@ -198,7 +213,7 @@ export function TasksPage() {
         )
       },
     },
-  ], [navigate, updateTask, stopTaskTimer])
+  ], [navigate, updateTask, stopTaskTimer, findStoryIdForTask])
 
   const table = useReactTable({
     data: allTasks,
