@@ -13,6 +13,7 @@ export interface TaskDraft {
   templateId?: string;
   storyId?: string;
   code?: string;
+  techPrefix: 'BE-' | 'FE-';
   title: string;
   type: TaskType;
   

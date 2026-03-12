@@ -26,6 +26,7 @@ export const useTasksStore = create<TasksState>()(
           templateId: template?.id || undefined,
           storyId: storyId || undefined,
           code: '',
+          techPrefix: (template?.title.toLowerCase().includes('backend') || template?.title.toLowerCase().includes('api')) ? 'BE-' : 'FE-',
           title: template ? `Nueva tarea: ${template.title}` : 'Nueva tarea',
           type: template?.taskType || 'feature',
           featureName: template?.featureName || '',

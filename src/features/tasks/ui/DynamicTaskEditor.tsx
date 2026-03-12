@@ -298,7 +298,23 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
                 placeholder="PROJ-123"
               />
             </div>
-            <div className="col-span-12 lg:col-span-6 space-y-1.5">
+            <div className="col-span-12 lg:col-span-1 space-y-1.5">
+              <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">PRE</Label>
+              <Select 
+                disabled={readOnly}
+                value={currentTask.techPrefix} 
+                onValueChange={(v: "BE-" | "FE-") => { updateTaskInfo({ techPrefix: v }) }}
+              >
+                <SelectTrigger className="h-11 bg-background font-mono text-xs font-bold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BE-">BE-</SelectItem>
+                  <SelectItem value="FE-">FE-</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-12 lg:col-span-5 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Título de la Tarea</Label>
               <Input 
                 disabled={readOnly}

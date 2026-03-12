@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table"
-import { Plus, Edit, Trash2, FileJson, Layers } from "lucide-react"
+import { Plus, Edit, Trash2, FileJson, Layers, Eye } from "lucide-react"
 import { Badge } from "@/shared/ui/badge"
 import {
   Dialog,
@@ -34,6 +34,7 @@ export function TemplatesPage() {
   const { templates, removeTemplate, addTemplate, updateTemplate } = useTemplatesStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
+  const [isReadOnly, setIsReadOnly] = useState(false)
   
   const handleDelete = (id: string) => {
     if (confirm("¿Estás seguro de que deseas eliminar esta plantilla?")) {
@@ -43,11 +44,19 @@ export function TemplatesPage() {
 
   const handleOpenCreate = () => {
     setEditingTemplate(null)
+    setIsReadOnly(false)
     setIsDialogOpen(true)
   }
 
   const handleOpenEdit = (template: Template) => {
     setEditingTemplate(template)
+    setIsReadOnly(false)
+    setIsDialogOpen(true)
+  }
+
+  const handleOpenView = (template: Template) => {
+    setEditingTemplate(template)
+    setIsReadOnly(true)
     setIsDialogOpen(true)
   }
 
@@ -112,41 +121,51 @@ export function TemplatesPage() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
-                title="Clonar datos" 
-                onClick={() => { addTemplate({ ...template, title: `${template.title} (Copia)` }) }}
+                title="Ver detalle" 
+                onClick={() => { handleOpenView(template) }}
               >
-                <FileJson className="h-4 w-4" />
+                <Eye className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10 rounded-lg"
-                onClick={() => { handleOpenEdit(template) }}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                onClick={() => { handleDelete(template.id) }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {role !== 'Editor' && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+                    title="Clonar datos" 
+                    onClick={() => { addTemplate({ ...template, title: `${template.title} (Copia)` }) }}
+                  >
+                    <FileJson className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10 rounded-lg"
+                    title="Editar"
+                    onClick={() => { handleOpenEdit(template) }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                    title="Eliminar"
+                    onClick={() => { handleDelete(template.id) }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
           )
         },
       },
     ],
-    [addTemplate, role] // handleDelete depends on removeTemplate from store, but we can just leave it or destructure it properly if needed, it works via closure here because it's redefined on every render for simplicity, but standard useMemo deps:
+    [addTemplate, role, handleDelete, handleOpenEdit, handleOpenView] // Added missing internal handlers
   )
 
-  const finalColumns = useMemo(() => {
-    if (role === 'Editor') {
-      return columns.filter(col => col.id !== 'actions')
-    }
-    return columns
-  }, [columns, role])
+  const finalColumns = columns
 
   const table = useReactTable({
     data: templates,
@@ -205,7 +224,7 @@ export function TemplatesPage() {
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
@@ -253,6 +272,7 @@ export function TemplatesPage() {
           <TemplateForm 
             key={editingTemplate?.id || "new"}
             initialData={editingTemplate || undefined} 
+            readOnly={isReadOnly}
             onSubmit={handleSubmit} 
             onCancel={() => { setIsDialogOpen(false) }} 
           />

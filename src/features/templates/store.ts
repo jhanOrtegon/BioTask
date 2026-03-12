@@ -33,6 +33,18 @@ const DEFAULT_TEMPLATES: Template[] = [
     hasFunctionalRequirements: false,
     hasValidations: true,
     createdAt: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    title: 'Backend Feature (Phyton)',
+    description: 'Molde especializado para lógica de servidor y APIs.',
+    taskType: 'feature',
+    hasObjective: true,
+    hasServices: true,
+    hasFunctionalRequirements: true,
+    hasValidations: true,
+    featureName: 'Backend Core',
+    createdAt: new Date().toISOString(),
   }
 ];
 
@@ -54,7 +66,7 @@ export const useTemplatesStore = create<TemplatesState>()(
         templates: state.templates.filter(t => t.id !== id)
       })),
       updateTemplate: (id, templateData) => set((state) => ({
-        templates: state.templates.map(t => 
+        templates: state.templates.map(t =>
           t.id === id ? { ...t, ...templateData } : t
         )
       })),

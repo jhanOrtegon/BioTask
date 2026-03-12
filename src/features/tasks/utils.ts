@@ -6,7 +6,8 @@ export const markdownToJira = (draft: TaskDraft): string => {
   const lines: string[] = [];
 
   // ── Título ──
-  lines.push('# ' + title);
+  // ── Título ──
+  lines.push('# ' + draft.techPrefix + title);
   lines.push('');
 
   lines.push('| Campo | Valor |');
@@ -113,8 +114,8 @@ export const generateConventionalCommit = (draft: TrackedTask | TaskDraft, lang:
   const scopeStr = featureName ? `(${featureName})` : '';
   const codeStr = code ? `${code} ` : '';
   const titleStr = title || (lang === 'es' ? 'Actualización de tarea' : 'Task update');
-
-  const header = `${prefix}${scopeStr}: ${codeStr}${titleStr}`;
+  const techPrefixStr = task.techPrefix || 'FE-';
+  const header = `${prefix}${scopeStr}: ${codeStr}${techPrefixStr}${titleStr}`;
 
   let body = '';
   if (data.objective) {
