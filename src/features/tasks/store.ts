@@ -37,6 +37,8 @@ export const useTasksStore = create<TasksState>()(
           },
           status: 'draft',
           estimatedHours: 0,
+          priority: 'medium',
+          checklists: [],
           createdAt: new Date().toISOString(),
         }
       }),

@@ -79,27 +79,35 @@ export const markdownToJira = (draft: TaskDraft): string => {
   return lines.join('\n');
 };
 
-export const generateConventionalCommit = (draft: TrackedTask | TaskDraft): string => {
+export const generateConventionalCommit = (draft: TrackedTask | TaskDraft, lang: 'es' | 'en' = 'en'): string => {
   const task = draft as TrackedTask & TaskDraft;
   const { data, title, type, featureName, code } = task;
 
-  const typeMap: Record<string, string> = {
+  const typeMapEn: Record<string, string> = {
     feature: 'feat',
     bug: 'fix',
     chore: 'chore',
     refactor: 'refactor',
   };
 
-  const prefix = typeMap[type] || 'feat';
+  const typeMapEs: Record<string, string> = {
+    feature: 'funcionalidad',
+    bug: 'corrección',
+    chore: 'tarea',
+    refactor: 'refactorización',
+  };
+
+  const prefix = lang === 'es' ? (typeMapEs[type] || 'tarea') : (typeMapEn[type] || 'feat');
   const scopeStr = featureName ? `(${featureName})` : '';
   const codeStr = code ? `${code} ` : '';
-  const titleStr = title || 'Actualización de tarea';
+  const titleStr = title || (lang === 'es' ? 'Actualización de tarea' : 'Task update');
 
   const header = `${prefix}${scopeStr}: ${codeStr}${titleStr}`;
 
   let body = '';
   if (data.objective) {
-    body = `\n\n${data.objective}`;
+    const label = lang === 'es' ? 'Objetivo' : 'Objective';
+    body = `\n\n${label}: ${data.objective}`;
   }
 
   return `${header}${body}`;

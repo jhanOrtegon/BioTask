@@ -25,10 +25,10 @@ export function Dashboard() {
   // 1. Distribución de Tipos de Tareas
   const allTasksArray = stories.flatMap(s => s.tasks.filter(t => t.status !== 'archived'))
   
-  const typeCount = allTasksArray.reduce((acc, task) => {
+  const typeCount = allTasksArray.reduce<Record<string, number>>((acc, task) => {
     acc[task.type] = (acc[task.type] || 0) + 1
     return acc
-  }, {} as Record<string, number>)
+  }, {})
   
   const pieData = Object.entries(typeCount).map(([name, value]) => ({ name, value }))
 
@@ -138,8 +138,9 @@ export function Dashboard() {
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        {pieData.map((_, index) => (
+                          // eslint-disable-next-line @typescript-eslint/no-deprecated
+                          <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip 

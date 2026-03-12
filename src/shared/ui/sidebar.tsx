@@ -52,20 +52,20 @@ const navSections: { title: string; items: NavItem[] }[] = [
    ────────────────────────────────────────── */
 const sb = {
   dark: {
-    bg:     "#0e1018",   // más oscuro que body dark (#161a24)
-    text:   "#868c9f",
-    muted:  "#484d60",
-    border: "#1c1f2b",
-    hover:  "#1c1f2b",
-    card:   "#14161f",
+    bg:     "#131722",   // Aclarado un poco (mantenido dark-slate)
+    text:   "#8e95a8",
+    muted:  "#545a6e",
+    border: "#222736",
+    hover:  "#222736",
+    card:   "#1a1e2c",
   },
   light: {
-    bg:     "#111520",   // sidebar siempre oscuro pero con blue-slate
-    text:   "#8890a5",
-    muted:  "#505568",
-    border: "#1e2130",
-    hover:  "#1e2130",
-    card:   "#181b28",
+    bg:     "#1b2030",   // Un poco más claro para la versión light
+    text:   "#939ab0",
+    muted:  "#5d647a",
+    border: "#282e40",
+    hover:  "#282e40",
+    card:   "#212738",
   },
 }
 
@@ -99,7 +99,7 @@ export function Sidebar() {
               BioTask
             </span>
             <span style={{ color: c.muted }} className="text-[9px] font-semibold tracking-[.18em] uppercase mt-0.5">
-              Pro Edition
+              Standard Edition
             </span>
           </div>
         )}

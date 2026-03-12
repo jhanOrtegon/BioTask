@@ -21,9 +21,12 @@ interface StoriesState {
     screenPath?: string
     data: SectionData
     jiraContent?: string
+    priority?: 'low' | 'medium' | 'high' | 'urgent'
+    dueDate?: string
+    checklists?: { id: string, title: string, completed: boolean }[]
     estimatedHours?: number
   }) => void
-  updateTask: (storyId: string, taskId: string, data: Partial<Pick<TrackedTask, 'title' | 'type' | 'featureName' | 'screenPath' | 'data' | 'jiraContent' | 'status' | 'estimatedHours' | 'sprintId'>>, comment: string) => void
+  updateTask: (storyId: string, taskId: string, data: Partial<Pick<TrackedTask, 'title' | 'type' | 'featureName' | 'screenPath' | 'data' | 'jiraContent' | 'status' | 'estimatedHours' | 'sprintId' | 'priority' | 'dueDate' | 'checklists'>>, comment: string) => void
   archiveTask: (storyId: string, taskId: string, comment: string) => void
 
   // ── Time Tracking ──
@@ -132,6 +135,9 @@ export const useStoriesStore = create<StoriesState>()(
               storyId,
               ...taskData,
               status: 'pending',
+              priority: taskData.priority,
+              dueDate: taskData.dueDate,
+              checklists: taskData.checklists || [],
               timeSpent: 0,
               timeLogs: [],
               createdAt: now,

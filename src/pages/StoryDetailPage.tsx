@@ -17,7 +17,7 @@ import { CommentDialog } from '@/shared/ui/comment-dialog'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { AuditTimeline } from '@/features/stories/ui/AuditTimeline'
-import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2 } from 'lucide-react'
+import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   flexRender,
@@ -68,7 +68,7 @@ export function StoryDetailPage() {
   const handleEditComment = (comment: string) => {
     if (!editDialog || !story) return
     updateTask(story.id, editDialog.taskId, {}, comment)
-    toast.success('Tarea actualizada', { description: comment })
+    toast.success('Cambio registrado', { description: comment })
     setEditDialog(null)
   }
 
@@ -183,32 +183,51 @@ export function StoryDetailPage() {
         return (
           <div className="flex justify-end gap-1">
             <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
-                    onClick={() => { setEditDialog({ taskId: task.id, title: task.title }) }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Registrar cambio</p></TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg"
-                    onClick={() => { setArchiveDialog({ taskId: task.id, title: task.title }) }}
-                  >
-                    <Archive className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Eliminar tarea</p></TooltipContent>
-              </Tooltip>
+              {task.status === 'pending' ? (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+                        onClick={() => { setEditDialog({ taskId: task.id, title: task.title }) }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Registrar cambio</p></TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg"
+                        onClick={() => { setArchiveDialog({ taskId: task.id, title: task.title }) }}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Eliminar tarea</p></TooltipContent>
+                  </Tooltip>
+                </>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="h-8 w-8 flex items-center justify-center text-muted-foreground/30 cursor-not-allowed">
+                      <Lock className="h-3.5 w-3.5" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">
+                      {task.status === 'in_progress'
+                        ? 'No se puede editar mientras está en curso'
+                        : 'Esta tarea ya fue completada'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </TooltipProvider>
           </div>
         )

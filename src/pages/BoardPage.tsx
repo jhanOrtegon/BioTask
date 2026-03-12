@@ -3,7 +3,7 @@ import type { DropResult } from '@hello-pangea/dnd'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useStoriesStore } from '@/features/stories/store'
 import { Badge } from '@/shared/ui/badge'
-import { KanbanSquare, BookOpen } from 'lucide-react'
+import { KanbanSquare, BookOpen, CheckSquare, Calendar, Plus } from 'lucide-react'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { useNavigate } from 'react-router-dom'
@@ -21,7 +21,7 @@ const COLUMNS: { id: ColumnType, title: string, color: string }[] = [
 export function BoardPage() {
   const navigate = useNavigate()
   const { stories, updateTask, stopTaskTimer } = useStoriesStore()
-  const { setCurrentTask } = useTasksStore()
+  const { setCurrentTask, startNewTask } = useTasksStore()
 
   // Get all active tasks across all stories
   const allTasks = useMemo(() => {
@@ -139,9 +139,33 @@ export function BoardPage() {
                                     )}
                                   </div>
                                   
-                                  <h4 className="text-sm font-semibold leading-tight line-clamp-2">
-                                    {task.title}
-                                  </h4>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {task.priority && (
+                                      <span title={`Prioridad: ${task.priority}`} className="text-xs">
+                                        {task.priority === 'urgent' ? '🔴' : task.priority === 'high' ? '🟠' : task.priority === 'medium' ? '🔵' : '🟡'}
+                                      </span>
+                                    )}
+                                    <h4 className="text-sm font-semibold leading-tight line-clamp-2">
+                                      {task.title}
+                                    </h4>
+                                  </div>
+
+                                  {((task.checklists && task.checklists.length > 0) || task.dueDate) && (
+                                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-medium">
+                                      {task.checklists && task.checklists.length > 0 && (
+                                        <div className="flex items-center gap-1 bg-muted/30 px-1.5 py-0.5 rounded">
+                                          <CheckSquare className="h-3 w-3" />
+                                          <span>{task.checklists.filter((c: { completed: boolean }) => c.completed).length}/{task.checklists.length}</span>
+                                        </div>
+                                      )}
+                                      {task.dueDate && (
+                                        <div className="flex items-center gap-1">
+                                          <Calendar className="h-3 w-3" />
+                                          <span>{new Date(task.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                   
                                   <div className="flex items-center justify-between pt-2 border-t border-border/40">
                                     <div className="flex items-center gap-3">
@@ -172,6 +196,20 @@ export function BoardPage() {
                           </Draggable>
                         ))}
                         {provided.placeholder}
+                        
+                        {column.id === 'pending' && (
+                          <button
+                            className="mt-2 w-full flex items-center gap-2 text-muted-foreground/40 hover:text-primary hover:bg-primary/5 border border-dashed border-border/40 hover:border-primary/30 rounded-xl p-3 text-xs font-semibold transition-all"
+                            onClick={() => {
+                              const activeStory = stories.find(s => s.status === 'active')
+                              startNewTask(undefined, activeStory?.id)
+                              void navigate('/editor')
+                            }}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Nueva tarea en el editor...
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
-import { Plus, Trash2, PlusCircle, Wand2, ChevronRight, Hash, Globe, FileCode, GitMerge, ClipboardCopy, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, PlusCircle, Wand2, ChevronRight, Hash, Globe, FileCode, GitMerge, ClipboardCopy, CheckCircle2, CheckSquare } from "lucide-react"
 import type { ServiceDetail } from "../../templates/types"
 import { generateConventionalCommit } from "../utils"
 import {
@@ -50,16 +50,18 @@ export function DynamicTaskEditor() {
   const { stories } = useStoriesStore()
   
   const [showCommitDialog, setShowCommitDialog] = useState(false)
+  const [commitLang, setCommitLang] = useState<'es' | 'en'>('en')
   const [copied, setCopied] = useState(false)
   
   if (!currentTask) return null
 
-  const generatedCommit = generateConventionalCommit(currentTask)
+  const generatedCommit = generateConventionalCommit(currentTask, commitLang)
 
   const handleCopyCommit = () => {
-    navigator.clipboard.writeText(generatedCommit)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    void navigator.clipboard.writeText(generatedCommit).then(() => {
+      setCopied(true)
+      setTimeout(() => { setCopied(false) }, 2000)
+    })
   }
 
   const template = currentTask.templateId 
@@ -128,6 +130,24 @@ export function DynamicTaskEditor() {
 
   const handleRemoveListItem = (type: 'requirements' | 'validations', index: number) => {
     updateTaskData({ [type]: currentTask.data[type].filter((_, i) => i !== index) })
+  }
+
+  const handleAddChecklist = () => {
+    updateTaskInfo({ 
+      checklists: [...(currentTask.checklists || []), { id: crypto.randomUUID(), title: "", completed: false }] 
+    })
+  }
+
+  const handleUpdateChecklist = (id: string, updates: { completed?: boolean; title?: string }) => {
+    updateTaskInfo({
+      checklists: (currentTask.checklists || []).map(c => c.id === id ? { ...c, ...updates } : c)
+    })
+  }
+
+  const handleRemoveChecklist = (id: string) => {
+    updateTaskInfo({
+      checklists: (currentTask.checklists || []).filter(c => c.id !== id)
+    })
   }
 
   const handleFillExample = () => {
@@ -257,7 +277,7 @@ export function DynamicTaskEditor() {
                 placeholder="PROJ-123"
               />
             </div>
-            <div className="col-span-12 lg:col-span-5 space-y-1.5">
+            <div className="col-span-12 lg:col-span-6 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Título de la Tarea</Label>
               <Input 
                 value={currentTask.title} 
@@ -283,6 +303,26 @@ export function DynamicTaskEditor() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="col-span-6 lg:col-span-2 space-y-1.5">
+              <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Prioridad</Label>
+              <Select 
+                value={currentTask.priority || 'medium'} 
+                onValueChange={(v: "low" | "medium" | "high" | "urgent") => { updateTaskInfo({ priority: v }) }}
+              >
+                <SelectTrigger className="h-11 bg-background font-mono text-xs font-bold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">🟡 Baja</SelectItem>
+                  <SelectItem value="medium">🔵 Media</SelectItem>
+                  <SelectItem value="high">🟠 Alta</SelectItem>
+                  <SelectItem value="urgent">🔴 Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-3">
             <div className="col-span-6 lg:col-span-3 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Módulo</Label>
               <Input 
@@ -292,9 +332,7 @@ export function DynamicTaskEditor() {
                 className="h-11 bg-background font-mono text-xs placeholder:text-muted-foreground/30"
               />
             </div>
-          </div>
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-8 lg:col-span-10 space-y-1.5">
+            <div className="col-span-6 lg:col-span-5 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Ruta / Pantalla</Label>
               <Input 
                 value={currentTask.screenPath || ''} 
@@ -303,7 +341,16 @@ export function DynamicTaskEditor() {
                 className="h-11 bg-background font-mono text-xs"
               />
             </div>
-            <div className="col-span-4 lg:col-span-2 space-y-1.5">
+            <div className="col-span-6 lg:col-span-2 space-y-1.5">
+              <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground" title="Fecha Límite">Vencimiento</Label>
+              <Input 
+                type="date"
+                value={currentTask.dueDate || ''} 
+                onChange={e => { updateTaskInfo({ dueDate: e.target.value }) }}
+                className="h-11 bg-background font-mono text-xs font-bold"
+              />
+            </div>
+            <div className="col-span-6 lg:col-span-2 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground" title="Horas Estimadas">H. Estimadas</Label>
               <Input 
                 type="number"
@@ -323,8 +370,8 @@ export function DynamicTaskEditor() {
 
       {/* ── Objetivo ── */}
       {hasObjective && (
-        <div className="border-x border-border bg-card">
-          <div className="px-5">
+        <div className="border-x border-[0px] border-b border-border bg-card">
+          <div className="px-5 border-t border-border mt-0 pt-0">
             <SectionHeader number="01" icon={Hash} title="Objetivo" color="text-primary" />
           </div>
           <div className="p-5 pt-4">
@@ -338,12 +385,56 @@ export function DynamicTaskEditor() {
         </div>
       )}
 
+      {/* ── Checklists (Sub-tareas) ── */}
+      <div className="border-x border-[0px] border-b border-border bg-card">
+        <div className="px-5 border-t border-border">
+          <SectionHeader 
+            number="02" icon={CheckSquare} title="Checklist" color="text-violet-500"
+            action={
+              <Button onClick={() => { handleAddChecklist() }} size="sm" variant="ghost" className="h-7 gap-1.5 text-[10px] font-bold text-violet-500 hover:text-violet-500 hover:bg-violet-500/10">
+                <PlusCircle className="h-3 w-3" /> Añadir Ítem
+              </Button>
+            }
+          />
+        </div>
+        <div className="p-5 pt-4 space-y-2">
+          {(currentTask.checklists || []).map((item, idx) => (
+            <div key={item.id} className="flex items-center gap-3 bg-muted/20 border border-border/50 p-2 rounded-lg group">
+              <button 
+                onClick={() => { handleUpdateChecklist(item.id, { completed: !item.completed }) }}
+                className={`shrink-0 flex items-center justify-center w-5 h-5 rounded border transition-colors ${item.completed ? 'bg-violet-500 border-violet-500 text-white' : 'border-border/80 bg-background'}`}
+              >
+                {item.completed && <CheckCircle2 className="w-3.5 h-3.5" />}
+              </button>
+              <Input
+                value={item.title}
+                onChange={e => { handleUpdateChecklist(item.id, { title: e.target.value }) }}
+                placeholder={`Elemento de checklist ${String(idx + 1)}`}
+                className={`h-8 text-xs bg-transparent border-transparent hover:border-border transition-colors ${item.completed ? 'line-through text-muted-foreground' : ''}`}
+              />
+              <Button 
+                variant="ghost" size="icon"
+                className="shrink-0 h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100" 
+                onClick={() => { handleRemoveChecklist(item.id) }}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+          {(currentTask.checklists || []).length === 0 && (
+            <div className="text-center py-4 bg-muted/10 rounded-lg border border-dashed border-border/40 cursor-pointer hover:bg-muted/20 transition-colors" onClick={handleAddChecklist}>
+              <span className="text-xs text-muted-foreground">Click aquí para agregar subtareas...</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Servicios ── */}
       {hasServices && (
         <div className="border-x border-border bg-card">
           <div className="px-5">
             <SectionHeader 
-              number="02" icon={Globe} title="Servicios / API" color="text-blue-500"
+              number="03" icon={Globe} title="Servicios / API" color="text-blue-500"
               action={
                 <Button onClick={() => { handleAddService() }} size="sm" variant="ghost" className="h-7 gap-1.5 text-[10px] font-bold text-blue-500 hover:text-blue-500 hover:bg-blue-500/10">
                   <PlusCircle className="h-3 w-3" /> Endpoint
@@ -353,12 +444,12 @@ export function DynamicTaskEditor() {
           </div>
           
           <div className="p-5 pt-4 space-y-3">
-            {(currentTask.data.services || []).map((service, idx) => (
+            {currentTask.data.services.map((service, idx) => (
               <div key={service.id} className="rounded-lg border border-border/60 bg-background overflow-hidden group">
                 {/* Service header bar */}
                 <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border/40">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] font-black text-muted-foreground">#{idx + 1}</span>
+                    <span className="font-mono text-[10px] font-black text-muted-foreground">#{String(idx + 1)}</span>
                     <span className="text-xs font-bold text-foreground">{service.name || 'Nuevo servicio'}</span>
                   </div>
                   <Button 
@@ -446,7 +537,7 @@ export function DynamicTaskEditor() {
                 </div>
               </div>
             ))}
-            {(currentTask.data.services || []).length === 0 && (
+            {currentTask.data.services.length === 0 && (
               <button
                 onClick={() => { handleAddService() }}
                 className="w-full border-2 border-dashed border-border/40 rounded-lg p-8 text-center text-muted-foreground/60 text-xs font-medium hover:border-blue-500/30 hover:text-blue-500/60 transition-colors cursor-pointer"
@@ -466,7 +557,7 @@ export function DynamicTaskEditor() {
             <div>
               <div className="px-5">
                 <SectionHeader 
-                  number="03" icon={Hash} title="Requerimientos" color="text-emerald-500"
+                  number="04" icon={Hash} title="Requerimientos" color="text-emerald-500"
                   action={
                     <Button onClick={() => { handleAddListItem('requirements') }} size="sm" variant="ghost" className="h-7 px-2 text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10">
                       <Plus className="h-3 w-3" />
@@ -475,13 +566,13 @@ export function DynamicTaskEditor() {
                 />
               </div>
               <div className="p-5 pt-3 space-y-1.5">
-                {(currentTask.data.requirements || []).map((req, i) => (
+                {currentTask.data.requirements.map((req, i) => (
                   <div key={i} className="flex items-center gap-2 group">
-                    <span className="text-[10px] font-mono font-bold text-muted-foreground/40 w-5 text-right shrink-0">{i + 1}</span>
+                    <span className="text-[10px] font-mono font-bold text-muted-foreground/40 w-5 text-right shrink-0">{String(i + 1)}</span>
                     <Input 
                       value={req}
                       onChange={e => { handleUpdateListItem('requirements', i, e.target.value) }}
-                      placeholder={`Requerimiento ${i + 1}`}
+                      placeholder={`Requerimiento ${String(i + 1)}`}
                       className="h-9 text-xs bg-transparent border-transparent hover:border-border focus:border-border transition-colors"
                     />
                     <Button 
@@ -508,7 +599,7 @@ export function DynamicTaskEditor() {
             <div>
               <div className="px-5">
                 <SectionHeader 
-                  number="04" icon={Hash} title="Validaciones" color="text-amber-500"
+                  number="05" icon={Hash} title="Validaciones" color="text-amber-500"
                   action={
                     <Button onClick={() => { handleAddListItem('validations') }} size="sm" variant="ghost" className="h-7 px-2 text-amber-500 hover:text-amber-500 hover:bg-amber-500/10">
                       <Plus className="h-3 w-3" />
@@ -517,13 +608,13 @@ export function DynamicTaskEditor() {
                 />
               </div>
               <div className="p-5 pt-3 space-y-1.5">
-                {(currentTask.data.validations || []).map((val, i) => (
+                {currentTask.data.validations.map((val, i) => (
                   <div key={i} className="flex items-center gap-2 group">
-                    <span className="text-[10px] font-mono font-bold text-muted-foreground/40 w-5 text-right shrink-0">{i + 1}</span>
+                    <span className="text-[10px] font-mono font-bold text-muted-foreground/40 w-5 text-right shrink-0">{String(i + 1)}</span>
                     <Input 
                       value={val}
                       onChange={e => { handleUpdateListItem('validations', i, e.target.value) }}
-                      placeholder={`Validación ${i + 1}`}
+                      placeholder={`Validación ${String(i + 1)}`}
                       className="h-9 text-xs bg-transparent border-transparent hover:border-border focus:border-border transition-colors"
                     />
                     <Button 
@@ -555,10 +646,35 @@ export function DynamicTaskEditor() {
               <GitMerge className="h-5 w-5 text-blue-500" /> Mensaje de Commit Sugerido
             </DialogTitle>
             <DialogDescription>
-              Copia este mensaje autogenerado siguiendo el estándar de Conventional Commits para tu repositorio basado en los datos de la tarea.
+              Autogenerado siguiendo Conventional Commits. Elige el idioma que prefieras.
             </DialogDescription>
           </DialogHeader>
-          <div className="relative mt-4">
+
+          {/* Language Selector */}
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => { setCommitLang('en') }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                commitLang === 'en'
+                  ? 'border-primary/50 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:border-border/80'
+              }`}
+            >
+              🇺🇸 English
+            </button>
+            <button
+              onClick={() => { setCommitLang('es') }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                commitLang === 'es'
+                  ? 'border-primary/50 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:border-border/80'
+              }`}
+            >
+              🇪🇸 Español
+            </button>
+          </div>
+
+          <div className="relative mt-2">
             <pre className="p-4 rounded-xl bg-muted/50 border border-border/50 text-xs font-mono text-muted-foreground whitespace-pre-wrap">
               {generatedCommit}
             </pre>
