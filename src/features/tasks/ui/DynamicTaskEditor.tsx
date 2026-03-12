@@ -44,8 +44,17 @@ const SectionHeader = ({ number, icon: Icon, title, color, action }: {
   </div>
 )
 
-export function DynamicTaskEditor() {
-  const { currentTask, updateTaskData, updateTaskInfo } = useTasksStore()
+import type { TaskDraft } from "../types"
+
+interface DynamicTaskEditorProps {
+  readOnly?: boolean
+  task?: TaskDraft
+}
+
+export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicTaskEditorProps) {
+  const store = useTasksStore()
+  const currentTask = propTask || store.currentTask
+  const { updateTaskData, updateTaskInfo } = store
   const { templates } = useTemplatesStore()
   const { stories } = useStoriesStore()
   
@@ -153,9 +162,18 @@ export function DynamicTaskEditor() {
   const handleFillExample = () => {
     updateTaskInfo({
       title: "Implementar módulo de autenticación con OAuth 2.0",
+      code: "AUTH-101",
       type: "feature",
+      priority: "high",
+      estimatedHours: 8,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       featureName: "Auth Module",
       screenPath: "/auth/login",
+      checklists: [
+        { id: crypto.randomUUID(), title: "Configurar credenciales en Google Console", completed: true },
+        { id: crypto.randomUUID(), title: "Implementar callback handler", completed: false },
+        { id: crypto.randomUUID(), title: "Pruebas unitarias de flujo fallido", completed: false }
+      ]
     })
     updateTaskData({
       objective: "Implementar el flujo completo de autenticación usando OAuth 2.0 con Google y GitHub como proveedores. El usuario debe poder iniciar sesión, registrarse y cerrar sesión correctamente. Se debe manejar la renovación de tokens y la persistencia de la sesión.",
@@ -216,7 +234,7 @@ export function DynamicTaskEditor() {
             
             <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border border-border/50">
               {/* Selector de plantilla */}
-              <Select value={currentTask.templateId || 'free'} onValueChange={handleApplyTemplate}>
+              <Select disabled={readOnly} value={currentTask.templateId || 'free'} onValueChange={handleApplyTemplate}>
                 <SelectTrigger className="h-7 w-[180px] text-[10px] font-bold border-none shadow-none focus:ring-0">
                   <SelectValue placeholder="Sin Plantilla" />
                 </SelectTrigger>
@@ -231,7 +249,7 @@ export function DynamicTaskEditor() {
               <div className="w-px h-4 bg-border" />
 
               {/* Selector de historia */}
-              <Select value={currentTask.storyId || 'none'} onValueChange={handleApplyStory}>
+              <Select disabled={readOnly} value={currentTask.storyId || 'none'} onValueChange={handleApplyStory}>
                 <SelectTrigger className="h-7 w-[180px] text-[10px] font-bold border-none shadow-none focus:ring-0">
                   <SelectValue placeholder="Sin Historia" />
                 </SelectTrigger>
@@ -254,14 +272,16 @@ export function DynamicTaskEditor() {
               <GitMerge className="h-3.5 w-3.5 text-blue-500" /> Auto-Commit
             </Button>
             <div className="w-px h-4 bg-border" />
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="gap-1.5 text-[10px] h-7 font-bold text-primary hover:text-primary hover:bg-primary/10" 
-              onClick={() => { handleFillExample() }}
-            >
-              <Wand2 className="h-3 w-3" /> Llenar Ejemplo
-            </Button>
+            {!readOnly && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-1.5 text-[10px] h-7 font-bold text-primary hover:text-primary hover:bg-primary/10" 
+                onClick={() => { handleFillExample() }}
+              >
+                <Wand2 className="h-3 w-3" /> Llenar Ejemplo
+              </Button>
+            )}
           </div>
         </div>
 
@@ -271,6 +291,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-12 lg:col-span-2 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">CÓDIGO</Label>
               <Input 
+                disabled={readOnly}
                 value={currentTask.code || ''}
                 onChange={e => { updateTaskInfo({ code: e.target.value }) }}
                 className="font-mono text-xs font-bold h-11 bg-background text-primary uppercase placeholder:text-muted-foreground/30"
@@ -280,6 +301,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-12 lg:col-span-6 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Título de la Tarea</Label>
               <Input 
+                disabled={readOnly}
                 value={currentTask.title} 
                 onChange={e => { updateTaskInfo({ title: e.target.value }) }}
                 className="font-semibold text-[15px] h-11 bg-background placeholder:text-muted-foreground/30"
@@ -289,6 +311,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-6 lg:col-span-2 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Tipo</Label>
               <Select 
+                disabled={readOnly}
                 value={currentTask.type} 
                 onValueChange={(v: "feature" | "bug" | "chore" | "refactor") => { updateTaskInfo({ type: v }) }}
               >
@@ -306,6 +329,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-6 lg:col-span-2 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Prioridad</Label>
               <Select 
+                disabled={readOnly}
                 value={currentTask.priority || 'medium'} 
                 onValueChange={(v: "low" | "medium" | "high" | "urgent") => { updateTaskInfo({ priority: v }) }}
               >
@@ -326,6 +350,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-6 lg:col-span-3 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Módulo</Label>
               <Input 
+                disabled={readOnly}
                 value={currentTask.featureName || ''} 
                 onChange={e => { updateTaskInfo({ featureName: e.target.value }) }}
                 placeholder="Auth Module"
@@ -335,6 +360,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-6 lg:col-span-5 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Ruta / Pantalla</Label>
               <Input 
+                disabled={readOnly}
                 value={currentTask.screenPath || ''} 
                 onChange={e => { updateTaskInfo({ screenPath: e.target.value }) }}
                 placeholder="/auth/login"
@@ -344,6 +370,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-6 lg:col-span-2 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground" title="Fecha Límite">Vencimiento</Label>
               <Input 
+                disabled={readOnly}
                 type="date"
                 value={currentTask.dueDate || ''} 
                 onChange={e => { updateTaskInfo({ dueDate: e.target.value }) }}
@@ -353,6 +380,7 @@ export function DynamicTaskEditor() {
             <div className="col-span-6 lg:col-span-2 space-y-1.5">
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground" title="Horas Estimadas">H. Estimadas</Label>
               <Input 
+                disabled={readOnly}
                 type="number"
                 min="0"
                 step="0.5"
@@ -371,16 +399,17 @@ export function DynamicTaskEditor() {
       {/* ── Objetivo ── */}
       {hasObjective && (
         <div className="border-x border-[0px] border-b border-border bg-card">
-          <div className="px-5 border-t border-border mt-0 pt-0">
-            <SectionHeader number="01" icon={Hash} title="Objetivo" color="text-primary" />
-          </div>
           <div className="p-5 pt-4">
-            <Textarea 
-              placeholder="Describe el objetivo principal de esta tarea..."
-              value={currentTask.data.objective}
-              onChange={e => { updateTaskData({ objective: e.target.value }) }}
-              className="min-h-[120px] text-sm leading-relaxed bg-background resize-none"
-            />
+            <SectionHeader number="01" icon={Hash} title="Objetivo" color="text-primary" />
+            <div className="mt-4">
+              <Textarea 
+                disabled={readOnly}
+                placeholder="Describe el objetivo principal de esta tarea..."
+                value={currentTask.data.objective}
+                onChange={e => { updateTaskData({ objective: e.target.value }) }}
+                className="min-h-[120px] text-sm leading-relaxed bg-background resize-none"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -390,40 +419,49 @@ export function DynamicTaskEditor() {
         <div className="px-5 border-t border-border">
           <SectionHeader 
             number="02" icon={CheckSquare} title="Checklist" color="text-violet-500"
-            action={
+            action={!readOnly && (
               <Button onClick={() => { handleAddChecklist() }} size="sm" variant="ghost" className="h-7 gap-1.5 text-[10px] font-bold text-violet-500 hover:text-violet-500 hover:bg-violet-500/10">
                 <PlusCircle className="h-3 w-3" /> Añadir Ítem
               </Button>
-            }
+            )}
           />
         </div>
         <div className="p-5 pt-4 space-y-2">
           {(currentTask.checklists || []).map((item, idx) => (
             <div key={item.id} className="flex items-center gap-3 bg-muted/20 border border-border/50 p-2 rounded-lg group">
               <button 
+                disabled={readOnly}
                 onClick={() => { handleUpdateChecklist(item.id, { completed: !item.completed }) }}
-                className={`shrink-0 flex items-center justify-center w-5 h-5 rounded border transition-colors ${item.completed ? 'bg-violet-500 border-violet-500 text-white' : 'border-border/80 bg-background'}`}
+                className={`shrink-0 flex items-center justify-center w-5 h-5 rounded border transition-colors ${item.completed ? 'bg-violet-500 border-violet-500 text-white' : 'border-border/80 bg-background'} ${readOnly ? 'cursor-default' : ''}`}
               >
                 {item.completed && <CheckCircle2 className="w-3.5 h-3.5" />}
               </button>
               <Input
+                disabled={readOnly}
                 value={item.title}
                 onChange={e => { handleUpdateChecklist(item.id, { title: e.target.value }) }}
                 placeholder={`Elemento de checklist ${String(idx + 1)}`}
                 className={`h-8 text-xs bg-transparent border-transparent hover:border-border transition-colors ${item.completed ? 'line-through text-muted-foreground' : ''}`}
               />
-              <Button 
-                variant="ghost" size="icon"
-                className="shrink-0 h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100" 
-                onClick={() => { handleRemoveChecklist(item.id) }}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              {!readOnly && (
+                <Button 
+                  variant="ghost" size="icon"
+                  className="shrink-0 h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100" 
+                  onClick={() => { handleRemoveChecklist(item.id) }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           ))}
-          {(currentTask.checklists || []).length === 0 && (
+          {(currentTask.checklists || []).length === 0 && !readOnly && (
             <div className="text-center py-4 bg-muted/10 rounded-lg border border-dashed border-border/40 cursor-pointer hover:bg-muted/20 transition-colors" onClick={handleAddChecklist}>
               <span className="text-xs text-muted-foreground">Click aquí para agregar subtareas...</span>
+            </div>
+          )}
+          {(currentTask.checklists || []).length === 0 && readOnly && (
+            <div className="text-center py-4 bg-muted/5 rounded-lg border border-border/20">
+              <span className="text-xs text-muted-foreground italic">Sin subtareas registradas.</span>
             </div>
           )}
         </div>
@@ -435,11 +473,11 @@ export function DynamicTaskEditor() {
           <div className="px-5">
             <SectionHeader 
               number="03" icon={Globe} title="Servicios / API" color="text-blue-500"
-              action={
+              action={!readOnly && (
                 <Button onClick={() => { handleAddService() }} size="sm" variant="ghost" className="h-7 gap-1.5 text-[10px] font-bold text-blue-500 hover:text-blue-500 hover:bg-blue-500/10">
                   <PlusCircle className="h-3 w-3" /> Endpoint
                 </Button>
-              }
+              )}
             />
           </div>
           
@@ -452,13 +490,15 @@ export function DynamicTaskEditor() {
                     <span className="font-mono text-[10px] font-black text-muted-foreground">#{String(idx + 1)}</span>
                     <span className="text-xs font-bold text-foreground">{service.name || 'Nuevo servicio'}</span>
                   </div>
-                  <Button 
-                    variant="ghost" size="icon"
-                    className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    onClick={() => { handleRemoveService(service.id) }}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {!readOnly && (
+                    <Button 
+                      variant="ghost" size="icon"
+                      className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      onClick={() => { handleRemoveService(service.id) }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
                 
                 {/* Service fields */}
@@ -467,6 +507,7 @@ export function DynamicTaskEditor() {
                     <div className="col-span-4 space-y-1">
                       <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground">Nombre</Label>
                       <Input 
+                        disabled={readOnly}
                         placeholder="Login API" 
                         value={service.name}
                         onChange={e => { handleUpdateService(service.id, { name: e.target.value }) }}
@@ -476,6 +517,7 @@ export function DynamicTaskEditor() {
                     <div className="col-span-2 space-y-1">
                       <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground">Método</Label>
                       <Select 
+                        disabled={readOnly}
                         value={service.method}
                         onValueChange={(v: "GET" | "POST" | "PUT" | "DELETE" | "PATCH") => { handleUpdateService(service.id, { method: v }) }}
                       >
@@ -494,6 +536,7 @@ export function DynamicTaskEditor() {
                     <div className="col-span-6 space-y-1">
                       <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground">Endpoint</Label>
                       <Input 
+                        disabled={readOnly}
                         placeholder="/api/v1/auth" 
                         value={service.url}
                         onChange={e => { handleUpdateService(service.id, { url: e.target.value }) }}
@@ -506,6 +549,7 @@ export function DynamicTaskEditor() {
                   <div className="space-y-1">
                     <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground">Query Params</Label>
                     <Input 
+                      disabled={readOnly}
                       placeholder="?userId=123&status=active" 
                       value={service.params}
                       onChange={e => { handleUpdateService(service.id, { params: e.target.value }) }}
@@ -518,6 +562,7 @@ export function DynamicTaskEditor() {
                     <div className="space-y-1">
                       <Label className="text-[9px] uppercase font-black tracking-widest text-blue-400">Payload</Label>
                       <Textarea 
+                        disabled={readOnly}
                         placeholder='{ "key": "value" }' 
                         className="font-mono text-[11px] min-h-[120px] bg-[hsl(225,25%,8%)] text-emerald-400/90 border-border/30 resize-none leading-relaxed" 
                         value={service.payload}
@@ -527,6 +572,7 @@ export function DynamicTaskEditor() {
                     <div className="space-y-1">
                       <Label className="text-[9px] uppercase font-black tracking-widest text-emerald-400">Response</Label>
                       <Textarea 
+                        disabled={readOnly}
                         placeholder='{ "status": "ok" }' 
                         className="font-mono text-[11px] min-h-[120px] bg-[hsl(225,25%,8%)] text-sky-400/90 border-border/30 resize-none leading-relaxed" 
                         value={service.response}
@@ -537,13 +583,18 @@ export function DynamicTaskEditor() {
                 </div>
               </div>
             ))}
-            {currentTask.data.services.length === 0 && (
+            {currentTask.data.services.length === 0 && !readOnly && (
               <button
                 onClick={() => { handleAddService() }}
                 className="w-full border-2 border-dashed border-border/40 rounded-lg p-8 text-center text-muted-foreground/60 text-xs font-medium hover:border-blue-500/30 hover:text-blue-500/60 transition-colors cursor-pointer"
               >
                 Click para agregar tu primer endpoint
               </button>
+            )}
+            {currentTask.data.services.length === 0 && readOnly && (
+              <div className="text-center py-6 bg-muted/5 rounded-lg border border-border/20">
+                <span className="text-xs text-muted-foreground italic">No hay servicios asociados.</span>
+              </div>
             )}
           </div>
         </div>
@@ -558,11 +609,11 @@ export function DynamicTaskEditor() {
               <div className="px-5">
                 <SectionHeader 
                   number="04" icon={Hash} title="Requerimientos" color="text-emerald-500"
-                  action={
+                  action={!readOnly && (
                     <Button onClick={() => { handleAddListItem('requirements') }} size="sm" variant="ghost" className="h-7 px-2 text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10">
                       <Plus className="h-3 w-3" />
                     </Button>
-                  }
+                  )}
                 />
               </div>
               <div className="p-5 pt-3 space-y-1.5">
@@ -570,26 +621,34 @@ export function DynamicTaskEditor() {
                   <div key={i} className="flex items-center gap-2 group">
                     <span className="text-[10px] font-mono font-bold text-muted-foreground/40 w-5 text-right shrink-0">{String(i + 1)}</span>
                     <Input 
+                      disabled={readOnly}
                       value={req}
                       onChange={e => { handleUpdateListItem('requirements', i, e.target.value) }}
                       placeholder={`Requerimiento ${String(i + 1)}`}
                       className="h-9 text-xs bg-transparent border-transparent hover:border-border focus:border-border transition-colors"
                     />
-                    <Button 
-                      variant="ghost" size="icon"
-                      className="shrink-0 h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors" 
-                      onClick={() => { handleRemoveListItem('requirements', i) }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {!readOnly && (
+                      <Button 
+                        variant="ghost" size="icon"
+                        className="shrink-0 h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors" 
+                        onClick={() => { handleRemoveListItem('requirements', i) }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
-                <button
-                  onClick={() => { handleAddListItem('requirements') }}
-                  className="w-full text-left pl-7 py-2 text-[11px] text-muted-foreground/40 hover:text-emerald-500/60 transition-colors cursor-pointer"
-                >
-                  + Añadir requerimiento...
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => { handleAddListItem('requirements') }}
+                    className="w-full text-left pl-7 py-2 text-[11px] text-muted-foreground/40 hover:text-emerald-500/60 transition-colors cursor-pointer"
+                  >
+                    + Añadir requerimiento...
+                  </button>
+                )}
+                {currentTask.data.requirements.length === 0 && readOnly && (
+                  <span className="text-[11px] text-muted-foreground italic pl-7">Sin requerimientos funcionales.</span>
+                )}
               </div>
             </div>
           )}
@@ -600,11 +659,11 @@ export function DynamicTaskEditor() {
               <div className="px-5">
                 <SectionHeader 
                   number="05" icon={Hash} title="Validaciones" color="text-amber-500"
-                  action={
+                  action={!readOnly && (
                     <Button onClick={() => { handleAddListItem('validations') }} size="sm" variant="ghost" className="h-7 px-2 text-amber-500 hover:text-amber-500 hover:bg-amber-500/10">
                       <Plus className="h-3 w-3" />
                     </Button>
-                  }
+                  )}
                 />
               </div>
               <div className="p-5 pt-3 space-y-1.5">
@@ -612,26 +671,34 @@ export function DynamicTaskEditor() {
                   <div key={i} className="flex items-center gap-2 group">
                     <span className="text-[10px] font-mono font-bold text-muted-foreground/40 w-5 text-right shrink-0">{String(i + 1)}</span>
                     <Input 
+                      disabled={readOnly}
                       value={val}
                       onChange={e => { handleUpdateListItem('validations', i, e.target.value) }}
                       placeholder={`Validación ${String(i + 1)}`}
                       className="h-9 text-xs bg-transparent border-transparent hover:border-border focus:border-border transition-colors"
                     />
-                    <Button 
-                      variant="ghost" size="icon"
-                      className="shrink-0 h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors" 
-                      onClick={() => { handleRemoveListItem('validations', i) }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {!readOnly && (
+                      <Button 
+                        variant="ghost" size="icon"
+                        className="shrink-0 h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors" 
+                        onClick={() => { handleRemoveListItem('validations', i) }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
-                <button
-                  onClick={() => { handleAddListItem('validations') }}
-                  className="w-full text-left pl-7 py-2 text-[11px] text-muted-foreground/40 hover:text-amber-500/60 transition-colors cursor-pointer"
-                >
-                  + Añadir validación...
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => { handleAddListItem('validations') }}
+                    className="w-full text-left pl-7 py-2 text-[11px] text-muted-foreground/40 hover:text-amber-500/60 transition-colors cursor-pointer"
+                  >
+                    + Añadir validación...
+                  </button>
+                )}
+                {currentTask.data.validations.length === 0 && readOnly && (
+                  <span className="text-[11px] text-muted-foreground italic pl-7">Sin validaciones de sistema.</span>
+                )}
               </div>
             </div>
           )}

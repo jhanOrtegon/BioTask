@@ -5,30 +5,50 @@ import { DynamicTaskEditor } from "@/features/tasks/ui/DynamicTaskEditor"
 import { JiraPreview } from "@/features/tasks/ui/JiraPreview"
 import { markdownToJira } from "@/features/tasks/utils"
 import { Button } from "@/shared/ui/button"
-import { ArrowLeft, Send, Eye, PanelRightClose, PanelRightOpen, FileJson2, Download, Eraser } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import { ArrowLeft, Send, Eye, PanelRightClose, PanelRightOpen, FileJson2, Download, Eraser, Edit } from "lucide-react"
+import { useNavigate, useParams } from "react-router-dom"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog"
+import { CommentDialog } from "@/shared/ui/comment-dialog"
 import { toast } from "sonner"
+import type { TaskDraft } from "@/features/tasks/types"
 
 export function EditorPage() {
-  const { currentTask, startNewTask, setJiraContent, updateTaskData, updateTaskInfo } = useTasksStore()
-  const { addTaskToStory } = useStoriesStore()
+  const { currentTask, startNewTask, setCurrentTask, setJiraContent, updateTaskData, updateTaskInfo, resetTask } = useTasksStore()
+  const { stories, addTaskToStory, updateTask } = useStoriesStore()
   const navigate = useNavigate()
+  const { storyId, taskId } = useParams<{ storyId?: string; taskId?: string }>()
+  
   const [showPreviewPanel, setShowPreviewPanel] = useState(false)
+  const [previewTab, setPreviewTab] = useState<'jira' | 'visual'>('visual')
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [justificationModalOpen, setJustificationModalOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-initialize libre si el usuario vino sin tarea
+  // Cargar tarea si vienen IDs por la URL
   useEffect(() => {
-    if (!currentTask) {
+    if (storyId && taskId) {
+      const story = stories.find(s => s.id === storyId)
+      const task = story?.tasks.find(t => t.id === taskId)
+      
+      if (task) {
+        // Solo establecer si es diferente a la actual para evitar bucles
+        if (!currentTask || currentTask.id !== task.id) {
+          setCurrentTask(task as unknown as TaskDraft)
+        }
+      } else {
+        toast.error("Tarea no encontrada")
+        void navigate('/dashboard')
+      }
+    } else if (!currentTask) {
+      // Si no hay params y no hay tarea actual, iniciar una nueva
       startNewTask()
     }
-  }, [currentTask, startNewTask])
+  }, [storyId, taskId, stories, currentTask, setCurrentTask, startNewTask, navigate])
 
   const taskDataString = JSON.stringify(currentTask?.data)
   const taskInfoString = `${currentTask?.title || ''}-${currentTask?.type || ''}-${currentTask?.featureName || ''}-${currentTask?.screenPath || ''}`
@@ -40,7 +60,7 @@ export function EditorPage() {
         setJiraContent(jira)
       }
     }
-  }, [taskDataString, taskInfoString, setJiraContent])
+  }, [currentTask, taskDataString, taskInfoString, setJiraContent])
 
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -49,36 +69,63 @@ export function EditorPage() {
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string)
+        const json = JSON.parse(event.target?.result as string) as Record<string, unknown>
 
         // Actualizar info general
-        if (json.title) updateTaskInfo({ title: json.title })
-        if (json.type) updateTaskInfo({ type: json.type })
-        if (json.featureName) updateTaskInfo({ featureName: json.featureName })
-        if (json.screenPath) updateTaskInfo({ screenPath: json.screenPath })
+        if (typeof json.title === 'string') updateTaskInfo({ title: json.title })
+        if (typeof json.type === 'string' && ['feature', 'bug', 'chore', 'refactor'].includes(json.type)) {
+          updateTaskInfo({ type: json.type as 'feature' | 'bug' | 'chore' | 'refactor' })
+        }
+        if (typeof json.featureName === 'string') updateTaskInfo({ featureName: json.featureName })
+        if (typeof json.screenPath === 'string') updateTaskInfo({ screenPath: json.screenPath })
+
+        if (typeof json.code === 'string') updateTaskInfo({ code: json.code })
+        if (typeof json.priority === 'string' && ['low', 'medium', 'high', 'urgent'].includes(json.priority)) {
+          updateTaskInfo({ priority: json.priority as 'low' | 'medium' | 'high' | 'urgent' })
+        }
+        if (typeof json.dueDate === 'string') updateTaskInfo({ dueDate: json.dueDate })
+        if (typeof json.estimatedHours === 'number') updateTaskInfo({ estimatedHours: json.estimatedHours })
+        if (Array.isArray(json.checklists)) {
+          const checklists = json.checklists.map((c: unknown) => {
+            const item = c as Record<string, unknown>;
+            return {
+              id: typeof item.id === 'string' ? item.id : crypto.randomUUID(),
+              title: typeof item.title === 'string' ? item.title : (typeof item.text === 'string' ? item.text : ''),
+              completed: typeof item.completed === 'boolean' ? item.completed : false
+            }
+          })
+          updateTaskInfo({ checklists })
+        }
 
         // Actualizar data
         const data: Record<string, unknown> = {}
-        if (json.objective) data.objective = json.objective
-        if (json.services) data.services = (json.services as Array<Record<string, unknown>>).map((s: Record<string, unknown>) => ({
-          ...s,
-          id: (s.id as string) || crypto.randomUUID(),
-          payload: typeof s.payload === 'object' ? JSON.stringify(s.payload, null, 2) : (s.payload || ''),
-          response: typeof s.response === 'object' ? JSON.stringify(s.response, null, 2) : (s.response || ''),
-        }))
-        if (json.requirements) data.requirements = json.requirements
-        if (json.validations) data.validations = json.validations
+        if (typeof json.objective === 'string') data.objective = json.objective
+        
+        const mapServices = (services: unknown[]) => services.map((s) => {
+          const service = s as Record<string, unknown>
+          return {
+            ...service,
+            id: (typeof service.id === 'string') ? service.id : crypto.randomUUID(),
+            payload: typeof service.payload === 'object' && service.payload !== null ? JSON.stringify(service.payload, null, 2) : (service.payload || ''),
+            response: typeof service.response === 'object' && service.response !== null ? JSON.stringify(service.response, null, 2) : (service.response || ''),
+          }
+        })
+
+        if (Array.isArray(json.services)) {
+          data.services = mapServices(json.services)
+        }
+        if (Array.isArray(json.requirements)) data.requirements = json.requirements
+        if (Array.isArray(json.validations)) data.validations = json.validations
+        
         // También soporta data envuelto
-        if (json.data) {
-          if (json.data.objective) data.objective = json.data.objective
-          if (json.data.services) data.services = (json.data.services as Array<Record<string, unknown>>).map((s: Record<string, unknown>) => ({
-            ...s,
-            id: (s.id as string) || crypto.randomUUID(),
-            payload: typeof s.payload === 'object' ? JSON.stringify(s.payload, null, 2) : (s.payload || ''),
-            response: typeof s.response === 'object' ? JSON.stringify(s.response, null, 2) : (s.response || ''),
-          }))
-          if (json.data.requirements) data.requirements = json.data.requirements
-          if (json.data.validations) data.validations = json.data.validations
+        const wrappedData = json.data as Record<string, unknown> | undefined
+        if (wrappedData) {
+          if (typeof wrappedData.objective === 'string') data.objective = wrappedData.objective
+          if (Array.isArray(wrappedData.services)) {
+            data.services = mapServices(wrappedData.services)
+          }
+          if (Array.isArray(wrappedData.requirements)) data.requirements = wrappedData.requirements
+          if (Array.isArray(wrappedData.validations)) data.validations = wrappedData.validations
         }
 
         if (Object.keys(data).length > 0) {
@@ -101,25 +148,54 @@ export function EditorPage() {
       return
     }
 
+    // Si es edición, pedimos justificación
+    if (currentTask.id) {
+      setJustificationModalOpen(true)
+      return
+    }
+
+    // Si es nueva y tiene storyId, guardamos
     if (currentTask.storyId) {
-      // Guardarla en la historia correspondiente
       addTaskToStory(currentTask.storyId, currentTask)
       toast.success('Tarea guardada en la historia', { description: currentTask.title })
+      resetTask()
       void navigate(`/stories/${currentTask.storyId}`)
     } else {
       // Tarea suelta, solo se puede copiar el Markdown/Jira
-      const jira = currentTask.jiraContent || ''
-      if (!jira) {
-        toast.error('No hay contenido Jira para copiar')
-        return
-      }
-      navigator.clipboard.writeText(jira).then(() => {
-        toast.success('Jira copiado al portapapeles', { description: 'Tarea suelta finalizada' })
-        void navigate('/dashboard')
-      }).catch(() => {
-        toast.error('Error al copiar el Jira generado')
-      })
+      finishDraftTask()
     }
+  }
+
+  const handleConfirmJustification = (comment: string) => {
+    if (!currentTask || !currentTask.id || !currentTask.storyId) return
+
+    const { status, ...rest } = currentTask
+    const updateData = {
+      ...rest,
+      status: status === 'draft' ? undefined : status
+    }
+    
+    updateTask(currentTask.storyId, currentTask.id, updateData, comment)
+    toast.success('Tarea actualizada', { description: currentTask.title })
+    
+    resetTask()
+    void navigate(`/stories/${currentTask.storyId}`)
+  }
+
+  const finishDraftTask = () => {
+    if (!currentTask) return
+    const jira = currentTask.jiraContent || ''
+    if (!jira) {
+      toast.error('No hay contenido Jira para copiar')
+      return
+    }
+    navigator.clipboard.writeText(jira).then(() => {
+      toast.success('Jira copiado al portapapeles', { description: 'Tarea suelta finalizada' })
+      resetTask()
+      void navigate('/dashboard')
+    }).catch(() => {
+      toast.error('Error al copiar el Jira generado')
+    })
   }
 
   const handleClearAll = () => {
@@ -163,9 +239,18 @@ export function EditorPage() {
             onClick={() => {
               const example = {
                 title: "Implementar módulo de autenticación con OAuth 2.0",
+                code: "AUTH-101",
                 type: "feature",
+                priority: "high",
+                estimatedHours: 8,
+                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 featureName: "Auth Module",
                 screenPath: "/auth/login",
+                checklists: [
+                  { id: "1", title: "Configurar credenciales en Google Console", completed: true },
+                  { id: "2", title: "Implementar callback handler", completed: false },
+                  { id: "3", title: "Pruebas unitarias de flujo fallido", completed: false }
+                ],
                 objective: "Implementar el flujo completo de autenticación usando OAuth 2.0 con Google y GitHub como proveedores.",
                 services: [
                   {
@@ -265,11 +350,26 @@ export function EditorPage() {
             <Eraser className="h-3.5 w-3.5" /> Limpiar Todo
           </Button>
 
-          <Button variant="outline" size="sm" onClick={() => { void navigate("/dashboard") }}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => { 
+              resetTask()
+              if (currentTask.storyId) {
+                void navigate(`/stories/${currentTask.storyId}`)
+              } else {
+                void navigate("/dashboard")
+              }
+            }}
+          >
             Cancelar
           </Button>
           <Button size="sm" className="gap-2 font-bold shadow-lg hover:shadow-primary/20 transition-all" onClick={handleFinish}>
-            <Send className="h-3.5 w-3.5" /> Finalizar
+            {currentTask.id ? (
+              <><Edit className="h-3.5 w-3.5" /> Actualizar Tarea</>
+            ) : (
+              <><Send className="h-3.5 w-3.5" /> Finalizar</>
+            )}
           </Button>
         </div>
       </header>
@@ -285,21 +385,40 @@ export function EditorPage() {
         {/* Panel Derecho: Preview (solo si showPreviewPanel) */}
         {showPreviewPanel && (
           <div className="bg-card/30 min-h-0 overflow-y-auto">
-            <div className="p-8 max-w-3xl mx-auto">
-              <div className="space-y-4 mb-6">
+            <div className="p-8 max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  Vista Previa de Jira
+                  Previsualización
                 </h3>
+                <div className="flex bg-muted/50 p-1 rounded-lg border border-border/50">
+                  <Button 
+                    variant={previewTab === 'visual' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    className="h-7 text-[10px] font-bold px-3"
+                    onClick={() => { setPreviewTab('visual') }}
+                  >
+                    Visual
+                  </Button>
+                  <Button 
+                    variant={previewTab === 'jira' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    className="h-7 text-[10px] font-bold px-3"
+                    onClick={() => { setPreviewTab('jira') }}
+                  >
+                    Jira
+                  </Button>
+                </div>
               </div>
-              <JiraPreview />
+              
+              {previewTab === 'visual' ? <DynamicTaskEditor readOnly /> : <JiraPreview />}
             </div>
           </div>
         )}
       </div>
 
       {/* Modal de Preview */}
-      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+      <Dialog open={previewModalOpen} onOpenChange={(open) => { setPreviewModalOpen(open) }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto border-border bg-popover shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
@@ -310,6 +429,16 @@ export function EditorPage() {
           <JiraPreview />
         </DialogContent>
       </Dialog>
+      
+      {/* Modal de Justificación */}
+      <CommentDialog
+        open={justificationModalOpen}
+        onOpenChange={(open) => { setJustificationModalOpen(open) }}
+        title="Justificar Cambio"
+        description="Explica brevemente por qué estás editando esta tarea. Este comentario quedará registrado en el historial."
+        confirmLabel="Actualizar y Guardar"
+        onConfirm={handleConfirmJustification}
+      />
     </div>
   )
 }

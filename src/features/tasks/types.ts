@@ -9,6 +9,7 @@ export interface SectionData {
 }
 
 export interface TaskDraft {
+  id?: string;
   templateId?: string;
   storyId?: string;
   code?: string;
@@ -22,7 +23,7 @@ export interface TaskDraft {
   screenPath?: string;
   featureName?: string;
   
-  status: 'draft' | 'completed';
+  status: 'draft' | 'completed' | 'pending' | 'in_progress' | 'archived';
   estimatedHours?: number;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;

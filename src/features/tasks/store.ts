@@ -22,6 +22,7 @@ export const useTasksStore = create<TasksState>()(
 
       startNewTask: (template, storyId) => set({
         currentTask: {
+          id: undefined,
           templateId: template?.id || undefined,
           storyId: storyId || undefined,
           code: '',

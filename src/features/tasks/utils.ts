@@ -9,13 +9,25 @@ export const markdownToJira = (draft: TaskDraft): string => {
   lines.push('# ' + title);
   lines.push('');
 
-  // ── Metadatos ──
   lines.push('| Campo | Valor |');
   lines.push('|-------|-------|');
+  lines.push('| Código | ' + (draft.code || 'N/A') + ' |');
   lines.push('| Tipo | ' + type.toUpperCase() + ' |');
+  lines.push('| Prioridad | ' + (draft.priority || 'medium').toUpperCase() + ' |');
+  if (draft.estimatedHours) lines.push('| Estimación | ' + String(draft.estimatedHours) + 'h |');
+  if (draft.dueDate) lines.push('| Vencimiento | ' + draft.dueDate + ' |');
   if (featureName) lines.push('| Funcionalidad | ' + featureName + ' |');
   if (screenPath) lines.push('| Ruta / Pantalla | `' + screenPath + '` |');
   lines.push('');
+
+  // ── Checklist ──
+  if (draft.checklists && draft.checklists.length > 0) {
+    lines.push('## 📋 Checklist');
+    draft.checklists.forEach(item => {
+      lines.push(`${item.completed ? '- [/]' : '- [ ]'} ${item.title}`);
+    });
+    lines.push('');
+  }
 
   // ── Objetivo ──
   if (data.objective) {

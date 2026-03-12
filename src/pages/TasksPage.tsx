@@ -21,7 +21,13 @@ import {
 } from "@/shared/ui/select"
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { CommentDialog } from '@/shared/ui/comment-dialog'
-import { CheckSquare, BookOpen, Eye } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+} from '@/shared/ui/dialog'
+import { CheckSquare, BookOpen, Eye, Edit, ExternalLink } from 'lucide-react'
+import { DynamicTaskEditor } from '@/features/tasks/ui/DynamicTaskEditor'
+import type { TaskDraft } from '@/features/tasks/types'
 import {
   flexRender,
   getCoreRowModel,
@@ -37,6 +43,7 @@ export function TasksPage() {
   const [selectedStoryId, setSelectedStoryId] = useState<string>('all')
   const [showArchived, setShowArchived] = useState<boolean>(false)
   const [archiveDialog, setArchiveDialog] = useState<{ taskId: string; title: string; storyId: string } | null>(null)
+  const [viewTask, setViewTask] = useState<TrackedTask | null>(null)
 
   const activeStories = useMemo(() => stories.filter(s => s.status !== 'archived'), [stories])
   
@@ -153,11 +160,31 @@ export function TasksPage() {
     },
     {
       id: 'actions',
-      header: () => <div className="text-right">Ir</div>,
+      header: () => <div className="text-right">Acciones</div>,
       cell: ({ row }) => {
         const task = row.original
         return (
-          <div className="flex justify-end pr-2">
+          <div className="flex justify-end gap-1 px-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg"
+              onClick={() => { setViewTask(task) }}
+              title="Ver Detalle"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+              onClick={() => { 
+                void navigate(`/editor/${task.storyId}/${task.id}`)
+              }}
+              title="Editar Tarea"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -165,7 +192,7 @@ export function TasksPage() {
               onClick={() => { void navigate(`/stories/${task.storyId}`) }}
               title="Ir a la Historia"
             >
-              <Eye className="h-4 w-4" />
+              <ExternalLink className="h-4 w-4" />
             </Button>
           </div>
         )
@@ -270,6 +297,15 @@ export function TasksPage() {
         </div>
       </div>
       
+      {/* Task Details Dialog */}
+      <Dialog open={!!viewTask} onOpenChange={(open: boolean) => { if (!open) setViewTask(null) }}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto border-border bg-popover shadow-2xl rounded-2xl p-0">
+          <div className="p-8">
+            <DynamicTaskEditor readOnly task={viewTask as unknown as TaskDraft} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Archive Task Comment Dialog */}
       {archiveDialog && (
         <CommentDialog

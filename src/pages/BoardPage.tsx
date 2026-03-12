@@ -8,7 +8,6 @@ import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { useNavigate } from 'react-router-dom'
 import { useTasksStore } from '@/features/tasks/store'
-import type { TaskDraft } from '@/features/tasks/types'
 
 type ColumnType = 'pending' | 'in_progress' | 'completed'
 
@@ -21,7 +20,7 @@ const COLUMNS: { id: ColumnType, title: string, color: string }[] = [
 export function BoardPage() {
   const navigate = useNavigate()
   const { stories, updateTask, stopTaskTimer } = useStoriesStore()
-  const { setCurrentTask, startNewTask } = useTasksStore()
+  const { startNewTask } = useTasksStore()
 
   // Get all active tasks across all stories
   const allTasks = useMemo(() => {
@@ -123,8 +122,7 @@ export function BoardPage() {
                                 onClick={(e) => {
                                   // Prevents triggering nav if dragging
                                   if (e.defaultPrevented) return
-                                  setCurrentTask(task as unknown as TaskDraft)
-                                  void navigate('/editor')
+                                  void navigate(`/editor/${task.storyId}/${task.id}`)
                                 }}
                               >
                                 <div className="space-y-3">

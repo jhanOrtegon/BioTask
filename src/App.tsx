@@ -38,6 +38,7 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="editor" element={<EditorPage />} />
+              <Route path="editor/:storyId/:taskId" element={<EditorPage />} />
               <Route path="stories" element={<StoriesPage />} />
               <Route path="stories/:id" element={<StoryDetailPage />} />
               <Route path="sprints" element={<SprintsPage />} />
