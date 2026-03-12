@@ -14,7 +14,7 @@ import {
 } from "@/shared/ui/select"
 import { Plus, Trash2, PlusCircle, Wand2, ChevronRight, Hash, Globe, FileCode, GitMerge, ClipboardCopy, CheckCircle2, CheckSquare } from "lucide-react"
 import type { ServiceDetail } from "../../templates/types"
-import { generateConventionalCommit } from "../utils"
+import { generateConventionalCommit, markdownToJira } from "../utils"
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import {
 } from "@/shared/ui/dialog"
 import { useState } from "react"
 import { Breadcrumbs } from "@/shared/ui/breadcrumbs"
+import { toast } from "sonner"
 
 // ── Section Header Component ──
 const SectionHeader = ({ number, icon: Icon, title, color, action }: {
@@ -70,6 +71,13 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
     void navigator.clipboard.writeText(generatedCommit).then(() => {
       setCopied(true)
       setTimeout(() => { setCopied(false) }, 2000)
+    })
+  }
+
+  const handleCopyJira = () => {
+    const jira = markdownToJira(currentTask)
+    void navigator.clipboard.writeText(jira).then(() => {
+      toast.success('Jira copiado', { description: 'El contenido se ha copiado al portapapeles' })
     })
   }
 
@@ -282,6 +290,14 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
                 <Wand2 className="h-3 w-3" /> Llenar Ejemplo
               </Button>
             )}
+            <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-1.5 text-[10px] h-7 font-bold text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10" 
+                onClick={handleCopyJira}
+              >
+                <ClipboardCopy className="h-3 w-3" /> Copiar Jira
+              </Button>
           </div>
         </div>
 

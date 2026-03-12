@@ -34,6 +34,9 @@ export function EditorPage() {
   // Cargar tarea si vienen IDs por la URL
   useEffect(() => {
     if (storyId && taskId) {
+      // Esperar a que las historias estén cargadas si el store está vacío
+      if (stories.length === 0) return
+
       const story = stories.find(s => s.id === storyId)
       const task = story?.tasks.find(t => t.id === taskId)
       
