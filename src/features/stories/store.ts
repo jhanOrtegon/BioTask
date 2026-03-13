@@ -33,6 +33,10 @@ interface StoriesState {
   startTaskTimer: (storyId: string, taskId: string) => void
   pauseTaskTimer: (storyId: string, taskId: string) => void
   stopTaskTimer: (storyId: string, taskId: string) => void
+  resetTaskTimer: (storyId: string, taskId: string) => void
+
+  // ── Maintenance ──
+  syncTasksIds: () => void
 
   // ── Helpers ──
   getStoryById: (id: string) => Story | undefined
@@ -131,9 +135,9 @@ export const useStoriesStore = create<StoriesState>()(
             if (s.id !== storyId) return s
             const now = new Date().toISOString()
             const newTask: TrackedTask = {
+              ...taskData,
               id: crypto.randomUUID(),
               storyId,
-              ...taskData,
               status: 'pending',
               priority: taskData.priority,
               dueDate: taskData.dueDate,
@@ -289,6 +293,64 @@ export const useStoriesStore = create<StoriesState>()(
             }
           })
         }
+      }),
+
+      resetTaskTimer: (storyId: string, taskId: string) => set((state) => ({
+        stories: state.stories.map(s => {
+          if (s.id !== storyId) return s
+          const now = new Date().toISOString()
+          const tasks = s.tasks.map(t => {
+            if (t.id !== taskId) return t
+            return {
+              ...t,
+              timeSpent: 0,
+              timeLogs: [],
+              updatedAt: now
+            }
+          })
+          const task = tasks.find(t => t.id === taskId)
+          return {
+            ...s,
+            tasks,
+            updatedAt: now,
+            auditLog: [
+              ...s.auditLog,
+              createAuditEntry('updated', 'task', taskId, task?.title || '', 'Contador de tiempo reiniciado')
+            ]
+          }
+        })
+      })),
+
+      syncTasksIds: () => set((state) => {
+        let fixCount = 0
+        const updatedStories = state.stories.map(story => {
+          let storyChanged = false
+          const updatedTasks = story.tasks.map(task => {
+            // Check for missing or stringified "undefined" IDs
+            if (!task.id || task.id === 'undefined') {
+              fixCount++
+              storyChanged = true
+              return { ...task, id: crypto.randomUUID(), storyId: story.id }
+            }
+            // Ensure storyId is correctly set
+            if (task.storyId !== story.id) {
+              storyChanged = true
+              return { ...task, storyId: story.id }
+            }
+            return task
+          })
+
+          if (storyChanged) {
+            return { ...story, tasks: updatedTasks, updatedAt: new Date().toISOString() }
+          }
+          return story
+        })
+
+        if (fixCount > 0) {
+          console.log(`Synced ${fixCount} tasks without IDs.`)
+        }
+
+        return { stories: updatedStories }
       }),
 
       getStoryById: (id) => get().stories.find(s => s.id === id),

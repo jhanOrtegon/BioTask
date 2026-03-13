@@ -1,49 +1,114 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
+import { Badge } from '@/shared/ui/badge'
 import { useStoriesStore } from '@/features/stories/store'
 import { useAuthStore } from '@/features/auth/store'
 import { useTasksStore } from '@/features/tasks/store'
-import { BookOpen, FileText, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as PieChartIcon } from 'lucide-react'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { useSprintsStore } from '@/features/sprints/store'
+import { BookOpen, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as PieChartIcon, RefreshCcw, Zap, Timer, TrendingDown } from 'lucide-react'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts'
+import { Tooltip as ShadcnTooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+import { toast } from 'sonner'
 
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
 
 export function Dashboard() {
   const { role } = useAuthStore()
   const navigate = useNavigate()
-  const { stories } = useStoriesStore()
+  const { stories, syncTasksIds } = useStoriesStore()
   const { startNewTask } = useTasksStore()
+  const { sprints } = useSprintsStore()
 
-  const activeStories = stories.filter(s => s.status === 'active')
-  const totalTasks = stories.reduce((acc, story) => acc + story.tasks.filter(t => t.status !== 'archived').length, 0)
+  const handleSync = () => {
+    syncTasksIds()
+    toast.success('Sincronización completada', { description: 'Las tareas sin ID han sido reparadas.' })
+  }
+
+  const activeStories = useMemo(() => stories.filter(s => s.status === 'active'), [stories])
+  const totalTasks = useMemo(() => stories.reduce((acc, story) => acc + story.tasks.filter(t => t.status !== 'archived').length, 0), [stories])
 
   const handleQuickTask = () => {
-    startNewTask() // Sin plantilla
+    startNewTask()
     void navigate('/editor')
   }
 
   // --- Analíticas ---
-  // 1. Distribución de Tipos de Tareas
-  const allTasksArray = stories.flatMap(s => s.tasks.filter(t => t.status !== 'archived'))
+  const allTasksArray = useMemo(() => stories.flatMap(s => s.tasks.filter(t => t.status !== 'archived')), [stories])
 
-  const typeCount = allTasksArray.reduce<Record<string, number>>((acc, task) => {
-    acc[task.type] = (acc[task.type] || 0) + 1
-    return acc
-  }, {})
+  const pieData = useMemo(() => {
+    const typeCount = allTasksArray.reduce<Record<string, number>>((acc, task) => {
+      acc[task.type] = (acc[task.type] || 0) + 1
+      return acc
+    }, {})
+    return Object.entries(typeCount).map(([name, value]) => ({ name, value }))
+  }, [allTasksArray])
 
-  const pieData = Object.entries(typeCount).map(([name, value]) => ({ name, value }))
+  const barData = useMemo(() => {
+    return activeStories.slice(0, 5).map(story => {
+      const totalSpentSeconds = story.tasks.reduce((acc, t) => acc + (t.timeSpent || 0), 0)
+      const totalEstimatedHours = story.tasks.reduce((acc, t) => acc + (t.estimatedHours || 0), 0)
 
-  const barData = activeStories.slice(0, 5).map(story => {
-    const totalSpentSeconds = story.tasks.reduce((acc, t) => acc + (t.timeSpent || 0), 0)
-    const totalEstimatedHours = story.tasks.reduce((acc, t) => acc + (t.estimatedHours || 0), 0)
+      return {
+        name: story.code,
+        Invertido: Number((totalSpentSeconds / 3600).toFixed(1)),
+        Estimado: Number(totalEstimatedHours.toFixed(1))
+      }
+    })
+  }, [activeStories])
 
-    return {
-      name: story.code,
-      Invertido: Number((totalSpentSeconds / 3600).toFixed(1)),
-      Estimado: Number(totalEstimatedHours.toFixed(1))
+  // --- Sprint Pulse Logic ---
+  const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
+  
+  const burndownData = useMemo(() => {
+    if (!activeSprint) return []
+    
+    const start = new Date(activeSprint.startDate)
+    const end = new Date(activeSprint.endDate)
+    const today = new Date()
+    
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const sprintStories = stories.filter(s => activeSprint.storyIds.includes(s.id))
+    const totalEstimated = sprintStories.reduce((acc, s) => acc + s.tasks.reduce((tAcc, t) => tAcc + (t.estimatedHours || 0), 0), 0)
+    
+    const data = []
+    for (let i = 0; i < totalDays; i++) {
+        const d = new Date(start)
+        d.setDate(d.getDate() + i)
+        const ideal = Math.max(0, totalEstimated - (totalEstimated / (totalDays - 1)) * i)
+        
+        let real: number | null = null
+        if (d <= today || (d.toDateString() === today.toDateString())) {
+            const completedSoFar = sprintStories.reduce((acc, s) => 
+                acc + s.tasks.filter(t => t.status === 'completed' && new Date(t.updatedAt) <= d).reduce((tAcc, t) => tAcc + (t.estimatedHours || 0), 0)
+            , 0)
+            real = Math.max(0, totalEstimated - completedSoFar)
+        }
+
+        data.push({
+            name: d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+            Ideal: Number(ideal.toFixed(1)),
+            Real: real !== null ? Number(real.toFixed(1)) : undefined
+        })
     }
-  })
+    return data
+  }, [activeSprint, stories])
+
+  const sprintProgress = useMemo(() => {
+    if (!activeSprint) return 0
+    const sprintStories = stories.filter(s => activeSprint.storyIds.includes(s.id))
+    const total = sprintStories.reduce((acc, s) => acc + s.tasks.length, 0)
+    if (total === 0) return 0
+    const completed = sprintStories.reduce((acc, s) => acc + s.tasks.filter(t => t.status === 'completed').length, 0)
+    return Math.round((completed / total) * 100)
+  }, [activeSprint, stories])
+
+  const daysLeft = useMemo(() => {
+    if (!activeSprint) return 0
+    const diff = new Date(activeSprint.endDate).getTime() - new Date().getTime()
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+  }, [activeSprint])
 
   return (
     <div className="h-full overflow-y-auto bg-background p-8">
@@ -63,12 +128,32 @@ export function Dashboard() {
           <div className="flex gap-3 shrink-0">
             {role !== 'Editor' && (
               <>
-                <Button variant="outline" size="lg" className="h-12 border-primary/20 hover:bg-primary/5 font-bold" onClick={handleQuickTask}>
-                  <PenLine className="mr-2 h-5 w-5" /> Tarea Rápida
-                </Button>
-                <Button size="lg" className="h-12 shadow-lg shadow-primary/20 font-bold" onClick={() => { void navigate('/stories') }}>
-                  <Plus className="mr-2 h-5 w-5" /> Nueva Historia
-                </Button>
+                <ShadcnTooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="lg" className="h-12 border-primary/10 hover:bg-primary/5 font-bold text-muted-foreground" onClick={handleSync}>
+                      <RefreshCcw className="mr-2 h-4 w-4" /> Sincronizar
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="font-bold">Reparar IDs de tareas dañados</TooltipContent>
+                </ShadcnTooltip>
+
+                <ShadcnTooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="lg" className="h-12 border-primary/20 hover:bg-primary/5 font-bold" onClick={handleQuickTask}>
+                      <PenLine className="mr-2 h-5 w-5" /> Tarea Rápida
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="font-bold">Crear tarea sin plantilla</TooltipContent>
+                </ShadcnTooltip>
+
+                <ShadcnTooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="lg" className="h-12 shadow-lg shadow-primary/20 font-bold" onClick={() => { void navigate('/stories') }}>
+                      <Plus className="mr-2 h-5 w-5" /> Nueva Historia
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="font-bold">Empezar un nuevo flujo de historias</TooltipContent>
+                </ShadcnTooltip>
               </>
             )}
           </div>
@@ -102,21 +187,144 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-card to-emerald-500/5 border-emerald-500/10 shadow-sm">
+          <Card className="bg-emerald-500/5 border-emerald-500/10 shadow-sm overflow-hidden group">
             <CardHeader className="pb-2">
-              <CardDescription className="font-bold uppercase tracking-wider text-xs">Plantillas Disponibles</CardDescription>
+              <CardDescription className="font-bold uppercase tracking-wider text-xs">Estado del Sistema</CardDescription>
               <CardTitle className="text-4xl font-black flex items-center justify-between">
-                Gestionar
-                <FileText className="h-8 w-8 text-emerald-500/40" />
+                Activo
+                <Zap className="h-8 w-8 text-emerald-500/40 group-hover:scale-110 transition-transform" />
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Button variant="link" className="p-0 h-auto text-xs text-emerald-500 font-bold" onClick={() => { void navigate('/templates') }}>
-                Ver biblioteca
-              </Button>
+              <p className="text-xs text-muted-foreground font-medium">Motor de sincronización operativo</p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Sprint Pulse Widget (Premium) */}
+        {activeSprint && (
+          <Card className="border-primary/30 border-2 shadow-2xl shadow-primary/5 bg-card overflow-hidden rounded-[2rem] animate-in zoom-in duration-500">
+            <div className="flex flex-col lg:flex-row h-full">
+              {/* Info Panel */}
+              <div className="lg:w-1/3 p-8 bg-gradient-to-br from-primary/10 via-transparent to-transparent border-r border-border/50">
+                <div className="flex items-center gap-2 mb-6">
+                  <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] font-black uppercase tracking-widest px-3 py-1">Sprint Pulse</Badge>
+                  <Badge variant="outline" className="animate-pulse border-emerald-500/50 text-emerald-500 text-[10px] font-bold">LIVE</Badge>
+                </div>
+                
+                <h2 className="text-3xl font-black tracking-tight mb-2 leading-tight">{activeSprint.name}</h2>
+                <div className="flex items-center gap-2 text-muted-foreground mb-8">
+                  <Timer className="h-4 w-4" />
+                  <span className="text-sm font-bold uppercase tracking-widest text-[10px]">{daysLeft} días restantes</span>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between items-end mb-2">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Progreso de Historias</span>
+                      <span className="text-sm font-black text-primary">{sprintProgress}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden border border-border/30">
+                      <div className="h-full bg-primary shadow-[0_0_12px_rgba(59,130,246,0.4)] transition-all duration-1000" style={{ width: `${String(sprintProgress)}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-card/50 p-4 rounded-2xl border border-border/50">
+                      <span className="block text-[9px] font-black text-muted-foreground uppercase mb-1">Cierre</span>
+                      <span className="text-sm font-bold">{new Date(activeSprint.endDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</span>
+                    </div>
+                    <div className="bg-card/50 p-4 rounded-2xl border border-border/50">
+                        <span className="block text-[9px] font-black text-muted-foreground uppercase mb-1">Meta</span>
+                        <span className="text-sm font-bold line-clamp-1">{activeSprint.goal || 'MVP Release'}</span>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full h-12 rounded-xl font-bold gap-2 text-sm shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
+                    onClick={() => { void navigate('/board') }}
+                  >
+                    <FolderKanban className="h-5 w-5" /> Abrir Tablero
+                  </Button>
+                </div>
+              </div>
+
+              {/* Chart Panel */}
+              <div className="flex-1 p-8 flex flex-col">
+                <div className="flex items-center justify-between mb-8">
+                   <div>
+                     <h3 className="text-lg font-black flex items-center gap-2">
+                        <TrendingDown className="h-5 w-5 text-primary" /> Burndown Chart
+                     </h3>
+                     <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">Quema de horas vs. Línea de Enfoque</p>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2 w-4 bg-primary rounded-full shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Real</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2 w-4 bg-muted-foreground/30 rounded-full" />
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Ideal</span>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="flex-1 min-h-[280px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={burndownData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorReal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
+                      <XAxis 
+                        dataKey="name" 
+                        fontSize={9} 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tick={{ fill: 'var(--muted-foreground)', fontWeight: 700 }}
+                        dy={10}
+                      />
+                      <YAxis 
+                        fontSize={9} 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tick={{ fill: 'var(--muted-foreground)', fontWeight: 700 }}
+                        unit="h"
+                      />
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                        itemStyle={{ fontSize: '11px', fontWeight: 800 }}
+                        labelStyle={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 900, marginBottom: '4px' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="Real" 
+                        stroke="#3b82f6" 
+                        strokeWidth={4}
+                        fillOpacity={1} 
+                        fill="url(#colorReal)" 
+                        isAnimationActive={true}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="Ideal" 
+                        stroke="var(--muted-foreground)" 
+                        strokeWidth={2}
+                        strokeDasharray="8 8" 
+                        fill="transparent" 
+                        opacity={0.3}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Analíticas Gráficas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
@@ -149,7 +357,7 @@ export function Dashboard() {
                           <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip
+                      <RechartsTooltip
                         contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}
                         itemStyle={{ color: 'var(--foreground)', fontWeight: 'bold' }}
                       />
@@ -180,7 +388,7 @@ export function Dashboard() {
                     <BarChart data={barData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                       <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                      <Tooltip
+                      <RechartsTooltip
                         cursor={{ fill: 'var(--muted)' }}
                         contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}
                       />

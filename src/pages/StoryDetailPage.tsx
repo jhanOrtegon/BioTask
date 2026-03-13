@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import confetti from 'canvas-confetti'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStoriesStore } from '@/features/stories/store'
 import { useTasksStore } from '@/features/tasks/store'
@@ -16,15 +17,25 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/shared/ui/dialog'
 import { CommentDialog } from '@/shared/ui/comment-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select"
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { AuditTimeline } from '@/features/stories/ui/AuditTimeline'
-import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Lock, Eye } from 'lucide-react'
+import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Eye, AlertCircle } from 'lucide-react'
 import { DynamicTaskEditor } from '@/features/tasks/ui/DynamicTaskEditor'
 import type { TaskDraft } from '@/features/tasks/types'
 import { toast } from 'sonner'
@@ -40,6 +51,28 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/shared/ui/tooltip'
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
+import { RotateCcw } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import { 
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/shared/ui/form'
+
+const storyUpdateSchema = z.object({
+  code: z.string().min(2, 'El código debe tener al menos 2 caracteres'),
+  title: z.string().min(3, 'El título debe tener al menos 3 caracteres'),
+  module: z.string().min(1, 'El módulo es obligatorio'),
+  description: z.string().optional(),
+})
+
+type StoryUpdateValues = z.infer<typeof storyUpdateSchema>
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', {
@@ -55,34 +88,74 @@ export function StoryDetailPage() {
     archiveTask, 
     startTaskTimer, 
     pauseTaskTimer, 
-    stopTaskTimer 
+    stopTaskTimer,
+    resetTaskTimer,
+    updateTask,
+    updateStory
   } = useStoriesStore()
   const { startNewTask } = useTasksStore()
+
+  const story = stories.find(s => s.id === id)
+
+  const triggerConfetti = useCallback(() => {
+    void confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6']
+    })
+  }, [])
 
   const findStoryIdForTask = useCallback((taskId: string) => {
     const storyMatch = stories.find(s => s.tasks.some(t => t.id === taskId))
     return storyMatch?.id
   }, [stories])
-  const story = stories.find(s => s.id === id)
 
   const [showTimeline, setShowTimeline] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState<{ taskId: string; title: string } | null>(null)
+  const [resetTimerDialog, setResetTimerDialog] = useState<{ taskId: string; title: string } | null>(null)
   const [viewTask, setViewTask] = useState<TrackedTask | null>(null)
   const [editStoryDialog, setEditStoryDialog] = useState(false)
-  
-  const [storyForm, setStoryForm] = useState({
-    code: story?.code || '',
-    title: story?.title || '',
-    module: story?.module || '',
-    description: story?.description || ''
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
+  const [showErrorDialog, setShowErrorDialog] = useState<{ title: string; desc: string } | null>(null)
+
+  const form = useForm<StoryUpdateValues>({
+    resolver: zodResolver(storyUpdateSchema),
+    defaultValues: {
+      code: story?.code || '',
+      title: story?.title || '',
+      module: story?.module || '',
+      description: story?.description || ''
+    },
   })
 
-  const { updateStory } = useStoriesStore()
-
-  const handleUpdateStory = () => {
+  const openEditStory = () => {
     if (!story) return
-    updateStory(story.id, storyForm, 'Historia actualizada desde el detalle')
+    form.reset({
+      code: story.code,
+      title: story.title,
+      module: story.module,
+      description: story.description || ''
+    })
+    setEditStoryDialog(true)
+  }
+
+  const handleUpdateClick = async () => {
+    const isValid = await form.trigger()
+    if (isValid) {
+      setShowUpdateConfirm(true)
+    }
+  }
+
+  const confirmUpdate = () => {
+    if (!story) return
+    const values = form.getValues()
+    updateStory(story.id, {
+      ...values,
+      code: values.code.toUpperCase()
+    }, 'Historia actualizada desde el detalle')
     setEditStoryDialog(false)
+    setShowUpdateConfirm(false)
     toast.success('Historia actualizada')
   }
 
@@ -129,19 +202,44 @@ export function StoryDetailPage() {
       accessorKey: 'status',
       header: 'Estado',
       cell: ({ row }) => {
-        const s = row.original.status
+        const task = row.original
+        const s = task.status
+
+        const handleStatusChange = (newStatus: string) => {
+          const statusNames: Record<string, string> = { 
+            'pending': 'Por Hacer', 
+            'in_progress': 'En Progreso', 
+            'completed': 'Completada',
+            'archived': 'Eliminada'
+          }
+          
+          if (newStatus === 'archived') {
+            setArchiveDialog({ taskId: task.id, title: task.title })
+          } else if (newStatus === 'completed') {
+            stopTaskTimer(story?.id || '', task.id)
+            triggerConfetti()
+          } else {
+            updateTask(story?.id || '', task.id, { status: newStatus as 'pending' | 'in_progress' | 'completed' | 'archived' }, `Estado cambiado a ${statusNames[newStatus]}`)
+          }
+        }
+
+        const badgeColors = s === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' :
+          s === 'in_progress' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' :
+          s === 'archived' ? 'border-muted text-muted-foreground bg-muted/50' :
+          'border-amber-500/30 text-amber-500 bg-amber-500/10'
+
         return (
-          <Badge
-            variant="outline"
-            className={
-              s === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' :
-              s === 'in_progress' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' :
-              s === 'archived' ? 'border-muted text-muted-foreground bg-muted/50' :
-              'border-amber-500/30 text-amber-500 bg-amber-500/10'
-            }
-          >
-            {s === 'pending' ? 'Por Hacer' : s === 'in_progress' ? 'En Progreso' : s === 'completed' ? 'Completada' : 'Eliminada'}
-          </Badge>
+          <Select value={s} onValueChange={handleStatusChange}>
+            <SelectTrigger className={`h-7 px-2 text-[10px] font-bold tracking-wider rounded-full border ${badgeColors} focus:ring-0 focus:ring-offset-0`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending" className="text-xs font-bold text-amber-500">Por Hacer</SelectItem>
+              <SelectItem value="in_progress" className="text-xs font-bold text-blue-500">En Progreso</SelectItem>
+              <SelectItem value="completed" className="text-xs font-bold text-emerald-500">Completada</SelectItem>
+              <SelectItem value="archived" className="text-xs font-bold text-destructive">Eliminar</SelectItem>
+            </SelectContent>
+          </Select>
         )
       },
     },
@@ -156,10 +254,37 @@ export function StoryDetailPage() {
           <div className="flex items-center gap-2">
             <div className="bg-muted/50 px-2 py-1 flex items-center justify-center rounded border border-border/50 text-xs text-foreground font-medium">
               <LiveTimer timeSpent={task.timeSpent || 0} timeLogs={task.timeLogs} />
-              {task.estimatedHours ? <span className="text-[10px] text-muted-foreground ml-1.5 font-bold">/ {task.estimatedHours}h</span> : null}
+              <span className="text-[10px] text-muted-foreground ml-1.5 font-bold">
+                / {task.estimatedHours || 0}h
+              </span>
             </div>
             {task.status !== 'completed' && task.status !== 'archived' && (
               <div className="flex bg-muted/30 rounded-md border border-border/50">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        onClick={() => { setViewTask(task) }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-bold">Ver detalles de la tarea</TooltipContent>
+                  </Tooltip>
+                  
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                        onClick={() => { if (story) void navigate(`/editor/${story.id}/${task.id}`) }}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-bold">Editar tarea en el editor pro</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {!isTimerRunning ? (
                   <Button 
                     variant="ghost" size="icon" className="h-6 w-6 text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10"
@@ -178,14 +303,36 @@ export function StoryDetailPage() {
                 <div className="w-px h-6 bg-border/50" />
                 <Button 
                   variant="ghost" size="icon" className="h-6 w-6 text-blue-500 hover:text-blue-500 hover:bg-blue-500/10"
-                  onClick={() => { if (story) stopTaskTimer(story.id, task.id) }}
+                  onClick={() => { 
+                    if (story) {
+                      stopTaskTimer(story.id, task.id)
+                      triggerConfetti()
+                    }
+                  }}
                 >
                   <Square className="h-2.5 w-2.5" />
                 </Button>
               </div>
             )}
             {task.status === 'completed' && (
-              <CheckCircle2 className="h-4 w-4 text-emerald-500/50" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            )}
+            {(task.timeSpent ?? 0) > 0 && (
+              <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-primary transition-colors"
+                    onClick={() => { setResetTimerDialog({ taskId: task.id, title: task.title }) }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-bold">Reiniciar tiempo invertido</TooltipContent>
+                  </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         )
@@ -207,42 +354,46 @@ export function StoryDetailPage() {
         return (
           <div className="flex justify-end gap-1">
             <TooltipProvider delayDuration={200}>
-              {task.status === 'pending' ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg"
+                    onClick={() => { setViewTask(task) }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Ver Detalle</p></TooltipContent>
+              </Tooltip>
+              {task.status === 'pending' || task.status === 'in_progress' ? (
                 <>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg"
-                        onClick={() => { setViewTask(task) }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Ver Detalle</p></TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+                        className={`h-8 w-8 rounded-lg ${task.status === 'in_progress' ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
                         onClick={() => { 
-                          // Deep recovery strategy
+                          if (task.status === 'in_progress') return
                           const sId = task.storyId || story?.id || findStoryIdForTask(task.id)
                           if (sId && task.id) {
                             void navigate(`/editor/${sId}/${task.id}`)
                           } else {
-                            toast.error("Error: ID de tarea o historia no encontrado")
-                            console.error("Missing IDs on Story Detail after deep recovery:", { storyId: sId, taskId: task.id, task })
+                            setShowErrorDialog({ 
+                              title: "Historia no encontrada", 
+                              desc: "No se puede abrir el editor porque no se encontró la relación con la historia." 
+                            })
                           }
                         }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent><p>Editar Tarea</p></TooltipContent>
+                    <TooltipContent>
+                      <p>{task.status === 'in_progress' ? 'No se puede editar mientras está en curso' : 'Editar Tarea'}</p>
+                    </TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -259,27 +410,16 @@ export function StoryDetailPage() {
                   </Tooltip>
                 </>
               ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="h-8 w-8 flex items-center justify-center text-muted-foreground/30 cursor-not-allowed">
-                      <Lock className="h-3.5 w-3.5" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">
-                      {task.status === 'in_progress'
-                        ? 'No se puede editar mientras está en curso'
-                        : 'Esta tarea ya fue completada'}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+                <div className="h-8 w-8 flex items-center justify-center text-emerald-500/50">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
               )}
             </TooltipProvider>
           </div>
         )
       },
     },
-  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, navigate, findStoryIdForTask])
+  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, resetTaskTimer, updateTask, triggerConfetti, navigate, findStoryIdForTask])
 
   const table = useReactTable({
     data: activeTasks,
@@ -297,7 +437,7 @@ export function StoryDetailPage() {
   }
 
   return (
-    <div className="h-full flex flex-col p-8 overflow-y-auto bg-background">
+    <div className="h-full flex flex-col p-8 overflow-y-auto bg-background animate-in fade-in duration-300">
       <Breadcrumbs items={[
         { label: 'Historias', href: '/stories' },
         { label: story.code }
@@ -364,21 +504,21 @@ export function StoryDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-xs font-bold"
-              onClick={() => { setEditStoryDialog(true) }}
+              className="gap-2 text-xs font-bold rounded-xl"
+              onClick={openEditStory}
             >
               <Edit className="h-3.5 w-3.5" /> Editar Historia
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-xs font-bold"
+              className="gap-2 text-xs font-bold rounded-xl"
               onClick={() => { setShowTimeline(!showTimeline) }}
             >
               <History className="h-3.5 w-3.5" /> {showTimeline ? 'Ocultar' : 'Ver'} Historial
             </Button>
             <Button
-              className="gap-2 font-bold shadow-lg shadow-primary/25 active:scale-95 transition-all"
+              className="gap-2 font-bold shadow-lg shadow-primary/25 active:scale-95 transition-all rounded-xl"
               onClick={() => {
                 startNewTask(undefined, story.id)
                 void navigate(`/editor`)
@@ -428,7 +568,7 @@ export function StoryDetailPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-48 text-center border-none">
+                  <TableCell colSpan={activeTasks.length + 5} className="h-48 text-center border-none">
                     <div className="flex flex-col items-center justify-center text-muted-foreground space-y-3">
                       <BookOpen className="h-8 w-8 opacity-20" />
                       <p className="text-sm font-medium">No hay tareas en esta historia.</p>
@@ -470,61 +610,119 @@ export function StoryDetailPage() {
       <Dialog open={editStoryDialog} onOpenChange={setEditStoryDialog}>
         <DialogContent className="max-w-2xl border-border bg-popover shadow-2xl rounded-2xl">
           <div className="p-6 space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-xl font-bold flex items-center gap-2">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
                 <Edit className="h-5 w-5 text-primary" /> Editar Historia
-              </h2>
-              <p className="text-sm text-muted-foreground">Actualiza los detalles de la User Story.</p>
-            </div>
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">Actualiza los detalles de la User Story.</DialogDescription>
+            </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Código Jira</Label>
-                  <Input 
-                    value={storyForm.code} 
-                    onChange={e => { setStoryForm(prev => ({ ...prev, code: e.target.value.toUpperCase() })) }}
-                    placeholder="PROJ-123"
+            <Form {...form}>
+              <form onSubmit={e => { e.preventDefault(); handleUpdateClick(); }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Código Jira</FormLabel>
+                        <FormControl>
+                          <Input placeholder="PROJ-123" className="rounded-xl" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="module"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Módulo</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Compras" className="rounded-xl" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Módulo</Label>
-                  <Input 
-                    value={storyForm.module} 
-                    onChange={e => { setStoryForm(prev => ({ ...prev, module: e.target.value })) }}
-                    placeholder="Compras"
-                  />
+
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Título de la Historia</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: Gestionar órdenes de compra" className="rounded-xl" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descripción</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Descripción opcional..."
+                          className="min-h-[100px] bg-background rounded-2xl"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                  <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setEditStoryDialog(false) }}>Cancelar</Button>
+                  <Button type="submit" className="font-bold rounded-xl px-8">Guardar Cambios</Button>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Título de la Historia</Label>
-                <Input 
-                  value={storyForm.title} 
-                  onChange={e => { setStoryForm(prev => ({ ...prev, title: e.target.value })) }}
-                  placeholder="Ej: Gestionar órdenes de compra"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Descripción</Label>
-                <Textarea 
-                  value={storyForm.description} 
-                  onChange={e => { setStoryForm(prev => ({ ...prev, description: e.target.value })) }}
-                  placeholder="Descripción opcional..."
-                  className="min-h-[100px] bg-background"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={() => { setEditStoryDialog(false) }}>Cancelar</Button>
-              <Button onClick={handleUpdateStory} className="font-bold">Guardar Cambios</Button>
-            </div>
+              </form>
+            </Form>
           </div>
         </DialogContent>
       </Dialog>
 
+      <ConfirmDialog
+        open={showUpdateConfirm}
+        onOpenChange={setShowUpdateConfirm}
+        onConfirm={confirmUpdate}
+        title="¿Actualizar historia?"
+        description="Se guardarán los cambios realizados en la historia."
+        confirmText="Confirmar"
+      />
+
+      <ConfirmDialog
+        open={!!resetTimerDialog}
+        onOpenChange={(open) => { if (!open) setResetTimerDialog(null) }}
+        onConfirm={() => {
+          if (resetTimerDialog && story) {
+            resetTaskTimer(story.id, resetTimerDialog.taskId)
+            toast.success('Contador reiniciado')
+            setResetTimerDialog(null)
+          }
+        }}
+        title="¿Reiniciar contador?"
+        description={resetTimerDialog ? `Se pondrá a cero el tiempo de "${resetTimerDialog.title}".` : ""}
+        confirmText="Sí, reiniciar"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        open={!!showErrorDialog}
+        onOpenChange={(open) => { if (!open) setShowErrorDialog(null) }}
+        onConfirm={() => setShowErrorDialog(null)}
+        title={showErrorDialog?.title || "Error"}
+        description={showErrorDialog?.desc || ""}
+        confirmText="Entendido"
+      />
     </div>
   )
 }

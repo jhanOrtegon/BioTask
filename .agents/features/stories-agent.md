@@ -6,8 +6,8 @@ Esta feature (`src/features/stories/`) es el **agregado de dominio principal**. 
 ## Contexto de la Feature
 - **UI:** `AuditTimeline.tsx` — componente de línea de tiempo que renderiza el historial de acciones con iconos y colores según el tipo de evento.
 - **Estado:** Un array de objetos `Story` (cada uno con `tasks: TrackedTask[]` y `auditLog: AuditEntry[]`) administrado con Zustand + persist (`stories-storage`).
-- **Timer:** Las operaciones de cronómetro (`start`, `pause`, `stop`) se manejan aquí porque el tiempo trackeado pertenece a la instancia de tarea dentro del story.
-- **Páginas asociadas:** `StoriesPage.tsx` (listado/CRUD), `StoryDetailPage.tsx` (detalle + tareas + timers + auditoría), `BoardPage.tsx` (kanban), `TasksPage.tsx` (tabla cross-story).
+- **Timer:** Las operaciones de cronómetro (`start`, `pause`, `stop`, `reset`) se manejan aquí. El "Reset" limpia el `timeSpent` y el array de `timeLogs`.
+- **Páginas asociadas:** `StoriesPage.tsx` (listado/CRUD), `StoryDetailPage.tsx` (detalle + tareas + timers + auditoría), `BoardPage.tsx` (kanban filtrado por sprint activo), `TasksPage.tsx` (tabla cross-story).
 
 ## Límites de la IA (Tokens)
 - **DEBES** restringir tus lecturas a `src/features/stories/` y a las páginas que la consumen directamente.

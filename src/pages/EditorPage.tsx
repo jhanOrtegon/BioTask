@@ -16,6 +16,7 @@ import {
 } from "@/shared/ui/dialog"
 import { CommentDialog } from "@/shared/ui/comment-dialog"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 import type { TaskDraft } from "@/features/tasks/types"
 
 export function EditorPage() {
@@ -29,6 +30,9 @@ export function EditorPage() {
   const [previewTab, setPreviewTab] = useState<'jira' | 'visual'>('visual')
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [justificationModalOpen, setJustificationModalOpen] = useState(false)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Cargar tarea si vienen IDs por la URL
@@ -67,7 +71,11 @@ export function EditorPage() {
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setImportFile(file)
+  }
 
+  const processImport = () => {
+    if (!importFile) return
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
@@ -134,13 +142,13 @@ export function EditorPage() {
           updateTaskData(data)
         }
 
-        toast.success("JSON importado", { description: `Campos llenados desde ${file.name}` })
+        toast.success("JSON importado", { description: `Campos llenados desde ${importFile.name}` })
       } catch {
         toast.error("Error al importar", { description: "El archivo no es un JSON válido." })
       }
     }
-    reader.readAsText(file)
-    e.target.value = ''
+    reader.readAsText(importFile)
+    setImportFile(null)
   }
 
   const handleFinish = () => {
@@ -149,6 +157,11 @@ export function EditorPage() {
       toast.error('La tarea debe tener un título')
       return
     }
+    setShowFinishConfirm(true)
+  }
+
+  const confirmFinish = () => {
+    if (!currentTask) return
 
     // Si es edición, pedimos justificación
     if (currentTask.id) {
@@ -201,6 +214,7 @@ export function EditorPage() {
   }
 
   const handleClearAll = () => {
+    setShowClearConfirm(false)
     updateTaskInfo({
       title: 'Nueva tarea',
       featureName: '',
@@ -353,7 +367,7 @@ export function EditorPage() {
             variant="outline"
             size="sm"
             className="gap-2 text-xs font-bold text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={handleClearAll}
+            onClick={() => { setShowClearConfirm(true) }}
           >
             <Eraser className="h-3.5 w-3.5" /> Limpiar Todo
           </Button>
@@ -448,6 +462,34 @@ export function EditorPage() {
         description="Explica brevemente por qué estás editando esta tarea. Este comentario quedará registrado en el historial."
         confirmLabel="Actualizar y Guardar"
         onConfirm={handleConfirmJustification}
+      />
+
+      <ConfirmDialog
+        open={showClearConfirm}
+        onOpenChange={setShowClearConfirm}
+        onConfirm={handleClearAll}
+        title="¿Limpiar todo el formulario?"
+        description="Esta acción eliminará todos los datos que hayas ingresado en la tarea actual. No se puede deshacer."
+        confirmText="Sí, limpiar todo"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        open={showFinishConfirm}
+        onOpenChange={setShowFinishConfirm}
+        onConfirm={confirmFinish}
+        title={currentTask.id ? "¿Actualizar tarea?" : "¿Finalizar y guardar tarea?"}
+        description={currentTask.id ? "Se guardarán los cambios realizados en la tarea actual." : "La tarea se guardará en la historia seleccionada."}
+        confirmText="Confirmar"
+      />
+
+      <ConfirmDialog
+        open={!!importFile}
+        onOpenChange={(open) => { if (!open) setImportFile(null) }}
+        onConfirm={processImport}
+        title="¿Importar datos desde JSON?"
+        description="Al importar un archivo, se sobrescribirán los campos actuales de la tarea. ¿Deseas continuar?"
+        confirmText="Sí, importar"
       />
     </div>
   )

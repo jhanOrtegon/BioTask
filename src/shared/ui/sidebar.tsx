@@ -145,7 +145,6 @@ export function Sidebar() {
                 }
                 style={({ isActive }) => ({
                   color: isActive ? undefined : c.text,
-                  ...(isActive ? {} : {}),
                 })}
               >
                 {({ isActive }) => (

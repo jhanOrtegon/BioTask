@@ -1,14 +1,18 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
+import confetti from 'canvas-confetti'
 import type { DropResult } from '@hello-pangea/dnd'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useStoriesStore } from '@/features/stories/store'
 import { Badge } from '@/shared/ui/badge'
-import { KanbanSquare, BookOpen, CheckSquare, Calendar, Plus } from 'lucide-react'
+import { KanbanSquare, BookOpen, CheckSquare, Calendar, Plus, RotateCcw } from 'lucide-react'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { useNavigate } from 'react-router-dom'
 import { useTasksStore } from '@/features/tasks/store'
+import { useSprintsStore } from '@/features/sprints/store'
 import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 
 type ColumnType = 'pending' | 'in_progress' | 'completed'
 
@@ -20,16 +24,30 @@ const COLUMNS: { id: ColumnType, title: string, color: string }[] = [
 
 export function BoardPage() {
   const navigate = useNavigate()
-  const { stories, updateTask, stopTaskTimer } = useStoriesStore()
+  const { stories, updateTask, stopTaskTimer, resetTaskTimer } = useStoriesStore()
+  const { sprints } = useSprintsStore()
   const { startNewTask } = useTasksStore()
+
+  const [resetTimerDialog, setResetTimerDialog] = useState<{ storyId: string; taskId: string; title: string } | null>(null)
+
+  const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
 
   // Get all active tasks across all stories
   const allTasks = useMemo(() => {
     return stories
-      .filter(s => s.status === 'active')
+      .filter(s => s.status === 'active' && (!activeSprint || activeSprint.storyIds.includes(s.id)))
       .flatMap(s => s.tasks.map(t => ({ ...t, storyCode: s.code, storyTitle: s.title, storyId: s.id })))
-      .filter(t => t.status !== 'archived')
-  }, [stories])
+      .filter(t => t.status !== 'archived' && t.id && t.storyId)
+  }, [stories, activeSprint])
+
+  const triggerConfetti = useCallback(() => {
+    void confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6']
+    })
+  }, [])
 
   const findStoryIdForTask = useCallback((taskId: string) => {
     const story = stories.find(s => s.tasks.some(t => t.id === taskId))
@@ -59,6 +77,7 @@ export function BoardPage() {
 
     if (newStatus === 'completed') {
       stopTaskTimer(taskToMove.storyId, taskToMove.id)
+      triggerConfetti()
     } else {
       updateTask(taskToMove.storyId, taskToMove.id, { status: statusTypeMap[newStatus] as 'pending' | 'in_progress' | 'completed' | 'archived' }, `Movido a ${COLUMNS.find(c => c.id === newStatus)?.title || newStatus} en el tablero`)
     }
@@ -80,8 +99,15 @@ export function BoardPage() {
               <KanbanSquare className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">Tablero Ágil</h1>
-              <p className="text-sm text-muted-foreground">Gestiona tus tareas activas mediante Drag & Drop</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-black tracking-tight text-foreground">Tablero Ágil</h1>
+                {activeSprint && (
+                  <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px] font-black uppercase tracking-tighter animate-in zoom-in duration-500">
+                    Sprint: {activeSprint.name}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">{activeSprint ? 'Mostrando tareas del sprint activo' : 'Gestiona tus tareas activas mediante Drag & Drop'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -126,7 +152,7 @@ export function BoardPage() {
                                   ${snapshot.isDragging ? 'shadow-lg ring-2 ring-primary/50 rotate-2' : ''}
                                 `}
                                 onClick={(e) => {
-                                  if (e.defaultPrevented) return
+                                  if (e.defaultPrevented || snapshot.isDragging) return
                                   // Deep recovery: search all stories if storyId is missing
                                   const sId = (task as { storyId?: string }).storyId || findStoryIdForTask(task.id)
                                   if (sId && task.id) {
@@ -183,22 +209,50 @@ export function BoardPage() {
                                         {task.type}
                                       </Badge>
                                       {task.timeSpent !== undefined ? (
-                                        <div className="flex items-center text-muted-foreground group-hover:text-primary transition-colors">
-                                          <LiveTimer showIcon={true} timeSpent={task.timeSpent} timeLogs={task.timeLogs} className="text-[10px]" />
-                                          {task.estimatedHours ? <span className="text-[9px] text-muted-foreground ml-1 font-bold">/ {task.estimatedHours}h</span> : null}
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex items-center text-muted-foreground group-hover:text-primary transition-colors">
+                                            <LiveTimer showIcon={true} timeSpent={task.timeSpent} timeLogs={task.timeLogs} className="text-[10px]" />
+                                            {task.estimatedHours ? <span className="text-[9px] text-muted-foreground ml-1 font-bold">/ {task.estimatedHours}h</span> : null}
+                                          </div>
+                                          {(task.timeSpent ?? 0) > 0 && (
+                                            <TooltipProvider>
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                  <button 
+                                                    className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-md hover:bg-destructive/10"
+                                                    onClick={(e) => {
+                                                      e.preventDefault()
+                                                      e.stopPropagation()
+                                                      setResetTimerDialog({ storyId: task.storyId, taskId: task.id, title: task.title })
+                                                    }}
+                                                  >
+                                                    <RotateCcw className="h-3 w-3" />
+                                                  </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="font-bold">Reiniciar tiempo invertido</TooltipContent>
+                                              </Tooltip>
+                                            </TooltipProvider>
+                                          )}
                                         </div>
                                       ) : null}
                                     </div>
-                                    <div 
-                                      className="grid place-items-center h-6 w-6 rounded-md hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors cursor-pointer"
-                                      onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        void navigate(`/stories/${task.storyId}`)
-                                      }}
-                                    >
-                                      <BookOpen className="h-3.5 w-3.5" />
-                                    </div>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div 
+                                            className="grid place-items-center h-6 w-6 rounded-md hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors cursor-pointer"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              void navigate(`/stories/${task.storyId}`)
+                                            }}
+                                          >
+                                            <BookOpen className="h-3.5 w-3.5" />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="font-bold">Ver historia completa</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   </div>
                                 </div>
                               </div>
@@ -229,6 +283,20 @@ export function BoardPage() {
           })}
         </div>
       </DragDropContext>
+      <ConfirmDialog
+        open={!!resetTimerDialog}
+        onOpenChange={(open) => { if (!open) setResetTimerDialog(null) }}
+        onConfirm={() => {
+          if (resetTimerDialog) {
+            resetTaskTimer(resetTimerDialog.storyId, resetTimerDialog.taskId)
+            toast.success("Contador reiniciado")
+          }
+        }}
+        title="¿Reiniciar Contador?"
+        description={`Se perderá todo el tiempo registrado para "${resetTimerDialog?.title || 'esta tarea'}".`}
+        confirmText="Reiniciar"
+        variant="destructive"
+      />
     </div>
   )
 }
