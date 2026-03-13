@@ -14,6 +14,15 @@ import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select"
+import { Filter } from 'lucide-react'
+
 type ColumnType = 'pending' | 'in_progress' | 'completed'
 
 const COLUMNS: { id: ColumnType, title: string, color: string }[] = [
@@ -29,15 +38,26 @@ export function BoardPage() {
   const { startNewTask } = useTasksStore()
 
   const [resetTimerDialog, setResetTimerDialog] = useState<{ storyId: string; taskId: string; title: string } | null>(null)
+  const [selectedStoryId, setSelectedStoryId] = useState<string>('all')
 
   const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
 
   // Get all active tasks across all stories
   const allTasks = useMemo(() => {
+    if (!activeSprint) return []
+
     return stories
-      .filter(s => s.status === 'active' && (!activeSprint || activeSprint.storyIds.includes(s.id)))
+      .filter(s => s.status === 'active' && 
+        activeSprint.storyIds.includes(s.id) && 
+        (selectedStoryId === 'all' || s.id === selectedStoryId)
+      )
       .flatMap(s => s.tasks.map(t => ({ ...t, storyCode: s.code, storyTitle: s.title, storyId: s.id })))
       .filter(t => t.status !== 'archived' && t.id && t.storyId)
+  }, [stories, activeSprint, selectedStoryId])
+
+  const sprintStories = useMemo(() => {
+    if (!activeSprint) return []
+    return stories.filter(s => activeSprint.storyIds.includes(s.id))
   }, [stories, activeSprint])
 
   const triggerConfetti = useCallback(() => {
@@ -110,7 +130,28 @@ export function BoardPage() {
               <p className="text-sm text-muted-foreground">{activeSprint ? 'Mostrando tareas del sprint activo' : 'Gestiona tus tareas activas mediante Drag & Drop'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            {activeSprint && (
+              <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg border border-border/50">
+                <div className="flex items-center gap-2 px-2 text-muted-foreground">
+                  <Filter className="h-3.5 w-3.5" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Filtrar:</span>
+                </div>
+                <Select value={selectedStoryId} onValueChange={setSelectedStoryId}>
+                  <SelectTrigger className="h-8 w-[200px] bg-background border-none shadow-none text-xs font-bold">
+                    <SelectValue placeholder="Todas las historias" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs font-bold">Todas las historias</SelectItem>
+                    {sprintStories.map(story => (
+                      <SelectItem key={story.id} value={story.id} className="text-xs font-bold">
+                        {story.code} - {story.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Badge variant="outline" className="font-mono text-xs font-bold py-1">
               {allTasks.length} Tareas Activas
             </Badge>
@@ -119,7 +160,24 @@ export function BoardPage() {
       </header>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden min-h-0">
+        {!activeSprint ? (
+          <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/5 p-12 text-center animate-in fade-in zoom-in duration-500">
+            <div className="h-20 w-20 rounded-2xl bg-primary/5 border border-primary/10 grid place-items-center mb-6">
+              <Calendar className="h-10 w-10 text-primary/40" />
+            </div>
+            <h2 className="text-xl font-black tracking-tight mb-2">No hay un sprint activo</h2>
+            <p className="text-muted-foreground max-w-[300px] mb-8">
+              Inicia un sprint desde la página de Sprints para empezar a gestionar tus tareas en el tablero ágil.
+            </p>
+            <button 
+              onClick={() => void navigate('/sprints')}
+              className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-black hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+            >
+              Ir a Sprints
+            </button>
+          </div>
+        ) : (
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden min-h-0">
           {COLUMNS.map(column => {
             const tasksInColumn = getTasksByColumn(column.id)
 
@@ -281,7 +339,8 @@ export function BoardPage() {
               </div>
             )
           })}
-        </div>
+          </div>
+        )}
       </DragDropContext>
       <ConfirmDialog
         open={!!resetTimerDialog}
