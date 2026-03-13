@@ -1,8 +1,11 @@
 import { useState, useMemo, useCallback } from 'react'
 import confetti from 'canvas-confetti'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import type { DropResult } from '@hello-pangea/dnd'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStoriesStore } from '@/features/stories/store'
 import { useTasksStore } from '@/features/tasks/store'
+import { useSprintsStore } from '@/features/sprints/store'
 import type { TrackedTask, TimeLog } from '@/features/stories/types'
 import { Button } from '@/shared/ui/button'
 import { Badge } from '@/shared/ui/badge'
@@ -34,7 +37,7 @@ import { Textarea } from '@/shared/ui/textarea'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { AuditTimeline } from '@/features/stories/ui/AuditTimeline'
-import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Eye,} from 'lucide-react'
+import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Eye, GripVertical } from 'lucide-react'
 import { DynamicTaskEditor } from '@/features/tasks/ui/DynamicTaskEditor'
 import type { TaskDraft } from '@/features/tasks/types'
 import { toast } from 'sonner'
@@ -94,7 +97,10 @@ export function StoryDetailPage() {
   } = useStoriesStore()
   const { startNewTask } = useTasksStore()
 
-  const story = stories.find(s => s.id === id)
+  const { sprints } = useSprintsStore()
+  const story = useMemo(() => stories.find(s => s.id === id), [stories, id])
+  const sprintForStory = useMemo(() => sprints.find(s => s.storyIds.includes(story?.id || '')), [sprints, story?.id])
+  const isReadOnly = useMemo(() => sprintForStory?.status === 'completed', [sprintForStory])
 
   const triggerConfetti = useCallback(() => {
     void confetti({
@@ -158,7 +164,29 @@ export function StoryDetailPage() {
     toast.success('Historia actualizada')
   }
 
-  const activeTasks = useMemo(() => story?.tasks.filter(t => t.status !== 'archived') || [], [story?.tasks])
+  const activeTasks = useMemo(() => (story?.tasks.filter(t => t.status !== 'archived') || []).sort((a, b) => (a.position || 0) - (b.position || 0)), [story?.tasks])
+
+  const onDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result
+    if (!destination || !story) return
+    if (source.index === destination.index) return
+
+    const otherTasks = activeTasks.filter(t => t.id !== draggableId)
+    let newPosition: number
+
+    if (otherTasks.length === 0) {
+      newPosition = 1000
+    } else if (destination.index === 0) {
+      newPosition = (otherTasks[0].position || 0) / 2
+    } else if (destination.index >= otherTasks.length) {
+      newPosition = (otherTasks[otherTasks.length - 1].position || 0) + 1000
+    } else {
+      const prevPos = otherTasks[destination.index - 1].position || 0
+      const nextPos = otherTasks[destination.index].position || 0
+      newPosition = (prevPos + nextPos) / 2
+    }
+    updateTask(story.id, draggableId, { position: newPosition }, 'Tarea reordenada en el detalle')
+  }
 
   const handleArchiveTask = (comment: string) => {
     if (!archiveDialog || !story) return
@@ -169,6 +197,15 @@ export function StoryDetailPage() {
 
 
   const columns = useMemo<ColumnDef<TrackedTask>[]>(() => [
+    {
+      id: 'drag-handle',
+      header: '',
+      cell: () => (
+        <div className={`flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-primary/50 transition-colors ${isReadOnly ? 'opacity-0 pointer-events-none' : ''}`}>
+          <GripVertical className="h-4 w-4" />
+        </div>
+      ),
+    },
     {
       accessorKey: 'title',
       header: 'Tarea',
@@ -228,7 +265,7 @@ export function StoryDetailPage() {
           'border-amber-500/30 text-amber-500 bg-amber-500/10'
 
         return (
-          <Select value={s} onValueChange={handleStatusChange}>
+          <Select value={s} onValueChange={handleStatusChange} disabled={isReadOnly}>
             <SelectTrigger className={`h-7 px-2 text-[10px] font-bold tracking-wider rounded-full border ${badgeColors} focus:ring-0 focus:ring-offset-0`}>
               <SelectValue />
             </SelectTrigger>
@@ -257,14 +294,14 @@ export function StoryDetailPage() {
                 / {task.estimatedHours || 0}h
               </span>
             </div>
-            {task.status !== 'completed' && task.status !== 'archived' && (
+            {task.status !== 'completed' && task.status !== 'archived' && !isReadOnly && (
               <div className="flex bg-muted/30 rounded-md border border-border/50">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                        onClick={() => { setViewTask(task) }}
+                        onClick={() => { if (!isReadOnly) setViewTask(task) }}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -418,7 +455,7 @@ export function StoryDetailPage() {
         )
       },
     },
-  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, resetTaskTimer, updateTask, triggerConfetti, navigate, findStoryIdForTask])
+  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, resetTaskTimer, updateTask, triggerConfetti, navigate, findStoryIdForTask, isReadOnly])
 
   const table = useReactTable({
     data: activeTasks,
@@ -455,6 +492,11 @@ export function StoryDetailPage() {
                   <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
                     {story.code}
                   </span>
+                  {isReadOnly && (
+                    <Badge variant="outline" className="bg-muted border-muted-foreground/30 text-muted-foreground text-[10px] font-black uppercase tracking-tighter">
+                      MODO LECTURA (SPRINT FINALIZADO)
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="text-[10px] font-bold">{story.module}</Badge>
                   <Badge
                     variant="outline"
@@ -500,14 +542,16 @@ export function StoryDetailPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-xs font-bold rounded-xl"
-              onClick={openEditStory}
-            >
-              <Edit className="h-3.5 w-3.5" /> Editar Historia
-            </Button>
+            {!isReadOnly && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs font-bold rounded-xl"
+                onClick={openEditStory}
+              >
+                <Edit className="h-3.5 w-3.5" /> Editar Historia
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -516,15 +560,17 @@ export function StoryDetailPage() {
             >
               <History className="h-3.5 w-3.5" /> {showTimeline ? 'Ocultar' : 'Ver'} Historial
             </Button>
-            <Button
-              className="gap-2 font-bold shadow-lg shadow-primary/25 active:scale-95 transition-all rounded-xl"
-              onClick={() => {
-                startNewTask(undefined, story.id)
-                void navigate(`/editor`)
-              }}
-            >
-              <Plus className="h-4 w-4" /> Nueva Tarea
-            </Button>
+            {!isReadOnly && (
+              <Button
+                className="gap-2 font-bold shadow-lg shadow-primary/25 active:scale-95 transition-all rounded-xl"
+                onClick={() => {
+                  startNewTask(undefined, story.id)
+                  void navigate(`/editor`)
+                }}
+              >
+                <Plus className="h-4 w-4" /> Nueva Tarea
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -542,47 +588,63 @@ export function StoryDetailPage() {
       {/* Tasks Table */}
       <div className="flex-1 min-h-0">
         <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-black/20 overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/40 border-b border-border">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className="h-11 text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap bg-transparent px-5">
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="group border-b border-border hover:bg-secondary/40 transition-colors">
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="py-3 px-5 align-middle border-none">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="tasks-list" isDropDisabled={isReadOnly}>
+              {(provided) => (
+                <Table>
+                  <TableHeader className="bg-muted/40 border-b border-border">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
+                        {headerGroup.headers.map((header) => (
+                          <TableHead key={header.id} className="h-11 text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap bg-transparent px-5">
+                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                          </TableHead>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={activeTasks.length + 5} className="h-48 text-center border-none">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground space-y-3">
-                      <BookOpen className="h-8 w-8 opacity-20" />
-                      <p className="text-sm font-medium">No hay tareas en esta historia.</p>
-                      <Button variant="outline" size="sm" onClick={() => {
-                        startNewTask(undefined, story.id)
-                        void navigate(`/editor`)
-                      }} className="mt-2 text-xs font-bold rounded-lg">
-                        Crear la primera tarea
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </TableHeader>
+                  <TableBody {...provided.droppableProps} ref={provided.innerRef}>
+                    {table.getRowModel().rows.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <Draggable key={row.original.id} draggableId={row.original.id} index={row.index} isDragDisabled={isReadOnly}>
+                          {(provided, snapshot) => (
+                            <TableRow 
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`group border-b border-border hover:bg-secondary/40 transition-colors ${snapshot.isDragging ? 'bg-secondary/60 shadow-lg' : ''}`}
+                            >
+                              {row.getVisibleCells().map((cell) => (
+                                <TableCell key={cell.id} className="py-3 px-5 align-middle border-none">
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          )}
+                        </Draggable>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="h-48 text-center border-none">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground space-y-3">
+                            <BookOpen className="h-8 w-8 opacity-20" />
+                            <p className="text-sm font-medium">No hay tareas en esta historia.</p>
+                            <Button variant="outline" size="sm" onClick={() => {
+                              startNewTask(undefined, story.id)
+                              void navigate(`/editor`)
+                            }} className="mt-2 text-xs font-bold rounded-lg">
+                              Crear la primera tarea
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {provided.placeholder}
+                  </TableBody>
+                </Table>
               )}
-            </TableBody>
-          </Table>
+            </Droppable>
+          </DragDropContext>
         </div>
       </div>
 

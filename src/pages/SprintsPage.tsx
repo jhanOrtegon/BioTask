@@ -160,8 +160,24 @@ export function SprintsPage() {
       }
     }
 
+    if (newStatus === 'completed') {
+      const sprint = sprints.find(s => s.id === id)
+      if (sprint) {
+        const sprintStories = activeStories.filter(s => sprint.storyIds.includes(s.id))
+        const totalTasks = sprintStories.reduce((acc, curr) => acc + curr.tasks.filter(t => t.status !== 'archived').length, 0)
+        const completedTasks = sprintStories.reduce((acc, curr) => acc + curr.tasks.filter(t => t.status === 'completed').length, 0)
+        
+        if (totalTasks > 0 && completedTasks < totalTasks) {
+          toast.error('Sprint Incompleto', { 
+            description: `No se puede finalizar el sprint. Hay ${String(totalTasks - completedTasks)} tareas pendientes.` 
+          })
+          return
+        }
+      }
+    }
+
     updateSprint(id, { status: newStatus })
-    toast.success('Estado actualizado', { description: `El sprint ahora está ${newStatus}` })
+    toast.success('Estado actualizado', { description: `El sprint ahora está ${newStatus === 'active' ? 'en curso' : newStatus === 'completed' ? 'finalizado' : 'en planificación'}` })
 
     if (newStatus === 'active') {
       toast.success('Sprint Activado', { description: 'Focus activado. El tablero ahora filtrará estas historias.' })
@@ -371,7 +387,7 @@ export function SprintsPage() {
 
           <div className="p-8 pt-2 space-y-6">
             <Form {...form}>
-              <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <FormField

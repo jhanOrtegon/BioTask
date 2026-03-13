@@ -41,6 +41,7 @@ export interface TrackedTask {
   estimatedHours?: number
   sprintId?: string
   timeLogs?: TimeLog[]
+  position: number // For manual reordering
   createdAt: string
   updatedAt: string
 }
@@ -68,4 +69,5 @@ export interface Story {
   auditLog: AuditEntry[]
   createdAt: string
   updatedAt: string
+  position: number
 }

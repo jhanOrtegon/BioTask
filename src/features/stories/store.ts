@@ -11,6 +11,7 @@ interface StoriesState {
   updateStory: (id: string, data: Partial<Pick<Story, 'code' | 'title' | 'module' | 'description'>>, comment: string) => void
   archiveStory: (id: string, comment: string) => void
   restoreStory: (id: string, comment: string) => void
+  reorderStory: (storyId: string, newPosition: number) => void
 
   // ── Task CRUD ──
   addTaskToStory: (storyId: string, task: {
@@ -26,8 +27,10 @@ interface StoriesState {
     checklists?: { id: string, title: string, completed: boolean }[]
     estimatedHours?: number
   }) => void
-  updateTask: (storyId: string, taskId: string, data: Partial<Pick<TrackedTask, 'title' | 'type' | 'featureName' | 'screenPath' | 'data' | 'jiraContent' | 'status' | 'estimatedHours' | 'sprintId' | 'priority' | 'dueDate' | 'checklists'>>, comment: string) => void
-  archiveTask: (storyId: string, taskId: string, comment: string) => void
+  updateTask: (storyId: string, taskId: string, data: Partial<Pick<TrackedTask, 'title' | 'type' | 'featureName' | 'screenPath' | 'data' | 'jiraContent' | 'status' | 'estimatedHours' | 'sprintId' | 'priority' | 'dueDate' | 'checklists' | 'position'>>, comment: string) => void
+  reorderTask: (storyId: string, taskId: string, newPosition: number) => void
+  moveTaskToStory: (sourceStoryId: string, destinationStoryId: string, taskId: string, newPosition: number) => void
+  archiveTask: (storyId: string, taskId: string, comment?: string) => void
 
   // ── Time Tracking ──
   startTaskTimer: (storyId: string, taskId: string) => void
@@ -47,7 +50,7 @@ function createAuditEntry(
   targetType: AuditEntry['targetType'],
   targetId: string,
   targetTitle: string,
-  comment: string
+  comment?: string
 ): AuditEntry {
   return {
     id: crypto.randomUUID(),
@@ -55,7 +58,7 @@ function createAuditEntry(
     targetType,
     targetId,
     targetTitle,
-    comment,
+    comment: comment || '',
     timestamp: new Date().toISOString(),
   }
 }
@@ -77,6 +80,7 @@ export const useStoriesStore = create<StoriesState>()(
           ],
           createdAt: now,
           updatedAt: now,
+          position: get().stories.length > 0 ? Math.max(...get().stories.map(s => s.position || 0)) + 1000 : 1000,
         }
         // Set the auditLog targetId to match the story id
         newStory.auditLog[0].targetId = newStory.id
@@ -129,6 +133,17 @@ export const useStoriesStore = create<StoriesState>()(
         })
       })),
 
+      reorderStory: (storyId, newPosition) => set((state) => ({
+        stories: state.stories.map(s => {
+          if (s.id !== storyId) return s
+          return {
+            ...s,
+            position: newPosition,
+            updatedAt: new Date().toISOString()
+          }
+        })
+      })),
+
       addTaskToStory: (storyId, taskData) => set((state) => {
         return {
           stories: state.stories.map(s => {
@@ -144,6 +159,7 @@ export const useStoriesStore = create<StoriesState>()(
               checklists: taskData.checklists || [],
               timeSpent: 0,
               timeLogs: [],
+              position: s.tasks.length > 0 ? Math.max(...s.tasks.map(t => t.position || 0)) + 1000 : 1000,
               createdAt: now,
               updatedAt: now,
             }
@@ -180,6 +196,59 @@ export const useStoriesStore = create<StoriesState>()(
           }
         })
       })),
+
+      reorderTask: (storyId, taskId, newPosition) => set((state) => ({
+        stories: state.stories.map(s => {
+          if (s.id !== storyId) return s
+          const now = new Date().toISOString()
+          return {
+            ...s,
+            updatedAt: now,
+            tasks: s.tasks.map(t =>
+              t.id === taskId ? { ...t, position: newPosition, updatedAt: now } : t
+            )
+          }
+        })
+      })),
+
+      moveTaskToStory: (sourceStoryId, destStoryId, taskId, newPosition) => set((state) => {
+        const sourceStory = state.stories.find(s => s.id === sourceStoryId)
+        const destStory = state.stories.find(s => s.id === destStoryId)
+        const task = sourceStory?.tasks.find(t => t.id === taskId)
+
+        if (!sourceStory || !destStory || !task) return state
+
+        const now = new Date().toISOString()
+        const updatedTask = { ...task, position: newPosition, updatedAt: now }
+
+        return {
+          stories: state.stories.map(s => {
+            if (s.id === sourceStoryId) {
+              return {
+                ...s,
+                tasks: s.tasks.filter(t => t.id !== taskId),
+                updatedAt: now,
+                auditLog: [
+                  ...s.auditLog,
+                  createAuditEntry('updated', 'task', taskId, task.title, `Tarea movida fuera de la historia`)
+                ]
+              }
+            }
+            if (s.id === destStoryId) {
+              return {
+                ...s,
+                tasks: [...s.tasks, updatedTask],
+                updatedAt: now,
+                auditLog: [
+                  ...s.auditLog,
+                  createAuditEntry('updated', 'task', taskId, task.title, `Tarea movida a esta historia`)
+                ]
+              }
+            }
+            return s
+          })
+        }
+      }),
 
       archiveTask: (storyId, taskId, comment) => set((state) => ({
         stories: state.stories.map(s => {
@@ -323,31 +392,54 @@ export const useStoriesStore = create<StoriesState>()(
 
       syncTasksIds: () => set((state) => {
         let fixCount = 0
-        const updatedStories = state.stories.map(story => {
+        const updatedStories = state.stories.map((story, storyIndex) => {
           let storyChanged = false
-          const updatedTasks = story.tasks.map(task => {
+          const currentStory = { ...story }
+
+          // Ensure story position is set
+          if (typeof story.position !== 'number') {
+            currentStory.position = (storyIndex + 1) * 1000
+            storyChanged = true
+          }
+
+          const updatedTasks = story.tasks.map((task, index) => {
+            const updatedTask = { ...task }
+            let taskChanged = false
+
             // Check for missing or stringified "undefined" IDs
             if (!task.id || task.id === 'undefined') {
               fixCount++
-              storyChanged = true
-              return { ...task, id: crypto.randomUUID(), storyId: story.id }
+              updatedTask.id = crypto.randomUUID()
+              taskChanged = true
             }
+
             // Ensure storyId is correctly set
-            if (task.storyId !== story.id) {
+            if (task.storyId !== currentStory.id) {
+              updatedTask.storyId = currentStory.id
+              taskChanged = true
+            }
+
+            // Ensure position is set
+            if (typeof updatedTask.position !== 'number') {
+              updatedTask.position = (index + 1) * 1000
+              taskChanged = true
+            }
+
+            if (taskChanged) {
               storyChanged = true
-              return { ...task, storyId: story.id }
+              return updatedTask
             }
             return task
           })
 
           if (storyChanged) {
-            return { ...story, tasks: updatedTasks, updatedAt: new Date().toISOString() }
+            return { ...currentStory, tasks: updatedTasks, updatedAt: new Date().toISOString() }
           }
           return story
         })
 
         if (fixCount > 0) {
-          console.log(`Synced ${fixCount} tasks without IDs.`)
+          console.log(`Synced ${String(fixCount)} tasks without IDs.`)
         }
 
         return { stories: updatedStories }

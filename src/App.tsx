@@ -10,6 +10,7 @@ import { StoryDetailPage } from '@/pages/StoryDetailPage'
 import { BoardPage } from '@/pages/BoardPage'
 import { TasksPage } from '@/pages/TasksPage'
 import { SprintsPage } from '@/pages/SprintsPage'
+import { SprintPlannerPage } from '@/pages/SprintPlannerPage'
 import { MainLayout } from '@/shared/ui/main-layout'
 import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/shared/ui/tooltip'
@@ -41,17 +42,16 @@ function App() {
                 <Route path="templates" element={<TemplatesPage />} />
                 <Route path="editor" element={<EditorPage />} />
                 <Route path="editor/:storyId/:taskId" element={<EditorPage />} />
-              </Route>
-            </Route>
-
-            {/* Rutas exclusivas de Administrador */}
-            <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
-              <Route element={<MainLayout />}>
-                <Route path="stories" element={<StoriesPage />} />
-                <Route path="stories/:id" element={<StoryDetailPage />} />
-                <Route path="sprints" element={<SprintsPage />} />
-                <Route path="tasks" element={<TasksPage />} />
-                <Route path="board" element={<BoardPage />} />
+                
+                {/* Rutas exclusivas de Administrador (dentro del mismo layout) */}
+                <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
+                  <Route path="stories" element={<StoriesPage />} />
+                  <Route path="stories/:id" element={<StoryDetailPage />} />
+                  <Route path="sprints" element={<SprintsPage />} />
+                  <Route path="tasks" element={<TasksPage />} />
+                  <Route path="board" element={<BoardPage />} />
+                  <Route path="planner" element={<SprintPlannerPage />} />
+                </Route>
               </Route>
             </Route>
 

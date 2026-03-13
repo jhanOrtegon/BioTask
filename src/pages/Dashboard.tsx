@@ -11,6 +11,8 @@ import { BookOpen, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as 
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts'
 import { Tooltip as ShadcnTooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import { toast } from 'sonner'
+import { format, subDays, isSameDay, startOfDay } from 'date-fns'
+import { es } from 'date-fns/locale'
 
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
 
@@ -110,6 +112,73 @@ export function Dashboard() {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
   }, [activeSprint])
 
+  // --- Daily Performance Logic ---
+  const dailyPerformance = useMemo(() => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 6 - i))
+    
+    return last7Days.map(day => {
+      const dayStart = startOfDay(day)
+      let totalSeconds = 0
+
+      stories.forEach(story => {
+        story.tasks.forEach(task => {
+          if (!task.timeLogs) return
+          task.timeLogs.forEach(log => {
+            if (!log.startedAt || !log.endedAt) return
+            const start = new Date(log.startedAt)
+            if (isSameDay(start, dayStart)) {
+              const end = new Date(log.endedAt)
+              totalSeconds += (end.getTime() - start.getTime()) / 1000
+            }
+          })
+        })
+      })
+
+      return {
+        name: format(day, 'EEE', { locale: es }),
+        fullDate: format(day, 'dd MMM', { locale: es }),
+        hours: Number((totalSeconds / 3600).toFixed(2)),
+        seconds: totalSeconds
+      }
+    })
+  }, [stories])
+
+  const todayMetrics = useMemo(() => {
+    const today = dailyPerformance[dailyPerformance.length - 1]
+    const seconds = today?.seconds || 0
+    const hours = today?.hours || 0
+    
+    let formattedTime = '0 min'
+    if (seconds < 3600) {
+      formattedTime = `${Math.floor(seconds / 60)} min`
+    } else {
+      const h = Math.floor(seconds / 3600)
+      const m = Math.floor((seconds % 3600) / 60)
+      formattedTime = `${h}h ${m}m`
+    }
+
+    let status = 'Modo Calma'
+    let icon = <TrendingDown className="h-4 w-4 text-muted-foreground" />
+    let color = 'text-muted-foreground'
+
+    if (hours > 6) {
+      status = 'Productividad Máxima'
+      icon = <Zap className="h-4 w-4 text-emerald-500" />
+      color = 'text-emerald-500'
+    } else if (hours > 3) {
+      status = 'Enfoque Sostenido'
+      icon = <Activity className="h-4 w-4 text-blue-500" />
+      color = 'text-blue-500'
+    } else if (hours > 0) {
+      status = 'En Movimiento'
+      icon = <Sparkles className="h-4 w-4 text-amber-500" />
+      color = 'text-amber-500'
+    }
+
+    return { hours, status, icon, color, formattedTime }
+  }, [dailyPerformance])
+
+
   return (
     <div className="h-full overflow-y-auto bg-background p-8">
       <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -188,15 +257,17 @@ export function Dashboard() {
           </Card>
 
           <Card className="bg-emerald-500/5 border-emerald-500/10 shadow-sm overflow-hidden group">
-            <CardHeader className="pb-2">
-              <CardDescription className="font-bold uppercase tracking-wider text-xs">Estado del Sistema</CardDescription>
-              <CardTitle className="text-4xl font-black flex items-center justify-between">
-                Activo
-                <Zap className="h-8 w-8 text-emerald-500/40 group-hover:scale-110 transition-transform" />
+            <CardHeader className="pb-2 text-right">
+              <CardDescription className="font-bold uppercase tracking-wider text-[10px] text-emerald-600/70">Hoy: {todayMetrics.status}</CardDescription>
+              <CardTitle className={`text-4xl font-black flex items-center justify-end gap-3 ${todayMetrics.color}`}>
+                {todayMetrics.formattedTime}
+                <Timer className="h-8 w-8 opacity-40 group-hover:rotate-12 transition-transform" />
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground font-medium">Motor de sincronización operativo</p>
+            <CardContent className="text-right">
+              <p className="text-xs text-muted-foreground font-medium flex items-center justify-end gap-1.5">
+                {todayMetrics.icon} Invertido hoy
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -406,6 +477,111 @@ export function Dashboard() {
           </Card>
 
         </div>
+
+        {/* Productivity Pulse - New creative section */}
+        <Card className="border-border/50 shadow-xl bg-card overflow-hidden rounded-[2.5rem]">
+          <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border/50">
+            <div className="md:w-1/3 p-10 bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+              <div className="flex items-center gap-2 mb-8">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Pulso de Productividad</span>
+              </div>
+              
+              <h3 className="text-2xl font-black tracking-tighter mb-4 leading-tight">
+                Tu ritmo de <br /> trabajo semanal
+              </h3>
+              
+              <div className="space-y-6">
+                <div className="p-4 bg-muted/30 rounded-2xl border border-border/50">
+                  <span className="block text-[9px] font-black text-muted-foreground uppercase mb-1 tracking-widest">Promedio Diario</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black">
+                      {(dailyPerformance.reduce((acc, d) => acc + d.hours, 0) / 7).toFixed(1)}h
+                    </span>
+                    <span className="text-xs font-bold text-muted-foreground">/ día</span>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                  <span className="block text-[9px] font-black text-primary/60 uppercase mb-1 tracking-widest">Día más Activo</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-black text-primary">
+                      {dailyPerformance.reduce((prev, current) => (prev.hours > current.hours) ? prev : current).name}
+                    </span>
+                    <span className="text-xs font-bold text-primary/60">
+                      ({dailyPerformance.reduce((prev, current) => (prev.hours > current.hours) ? prev : current).hours}h)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 p-8 min-h-[300px]">
+              <div className="flex items-center justify-between mb-10 px-4">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">Histórico 7 días</p>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                     <div className="h-1.5 w-6 bg-primary rounded-full" />
+                     <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Horas Reales</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dailyPerformance} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="pulseGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
+                    <XAxis 
+                      dataKey="name" 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false} 
+                      tick={{ fill: 'var(--muted-foreground)', fontWeight: 800 }}
+                      dy={10}
+                    />
+                    <YAxis 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false} 
+                      tick={{ fill: 'var(--muted-foreground)', fontWeight: 800 }}
+                      unit="h"
+                    />
+                    <RechartsTooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload as { fullDate: string, hours: number }
+                          return (
+                            <div className="bg-card border border-border p-3 rounded-2xl shadow-2xl">
+                              <p className="text-[9px] font-black text-primary uppercase mb-1">{data.fullDate}</p>
+                              <p className="text-lg font-black">{data.hours}h <span className="text-[10px] text-muted-foreground font-bold">trabajadas</span></p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="hours" 
+                      stroke="var(--primary)" 
+                      strokeWidth={5}
+                      fillOpacity={1} 
+                      fill="url(#pulseGradient)"
+                      activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--primary)' }}
+                      animationDuration={1500}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* Historias Recientes */}
         <div className="space-y-4 pt-4">

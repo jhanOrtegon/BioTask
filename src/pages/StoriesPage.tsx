@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useStoriesStore } from '@/features/stories/store'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import type { DropResult } from '@hello-pangea/dnd'
 import type { Story } from '@/features/stories/types'
 import { Button } from '@/shared/ui/button'
 import {
@@ -23,7 +25,7 @@ import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 import { CommentDialog } from '@/shared/ui/comment-dialog'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
-import { BookOpen, Plus, Archive, RotateCcw, Eye, Edit } from 'lucide-react'
+import { BookOpen, Plus, Archive, RotateCcw, Eye, Edit, GripVertical } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -46,7 +48,7 @@ function formatDate(iso: string) {
 }
 
 export function StoriesPage() {
-  const { stories, addStory, updateStory, archiveStory, restoreStory } = useStoriesStore()
+  const { stories, addStory, updateStory, archiveStory, restoreStory, reorderStory } = useStoriesStore()
   const navigate = useNavigate()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
@@ -66,9 +68,32 @@ export function StoriesPage() {
   const [formModule, setFormModule] = useState('')
   const [formDesc, setFormDesc] = useState('')
 
-  const filteredStories = useMemo(() => stories.filter(s =>
-    showArchived ? s.status === 'archived' : s.status === 'active'
-  ), [stories, showArchived])
+  const filteredStories = useMemo(() => stories
+    .filter(s => showArchived ? s.status === 'archived' : s.status === 'active')
+    .sort((a, b) => (a.position || 0) - (b.position || 0))
+  , [stories, showArchived])
+
+  const onDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result
+    if (!destination) return
+    if (source.index === destination.index) return
+
+    const otherStories = filteredStories.filter(s => s.id !== draggableId)
+    let newPosition: number
+
+    if (otherStories.length === 0) {
+      newPosition = 1000
+    } else if (destination.index === 0) {
+      newPosition = (otherStories[0].position || 0) / 2
+    } else if (destination.index >= otherStories.length) {
+      newPosition = (otherStories[otherStories.length - 1].position || 0) + 1000
+    } else {
+      const prevPos = otherStories[destination.index - 1].position || 0
+      const nextPos = otherStories[destination.index].position || 0
+      newPosition = (prevPos + nextPos) / 2
+    }
+    reorderStory(draggableId, newPosition)
+  }
 
   const handleCreate = () => {
     if (!formCode.trim() || !formTitle.trim() || !formModule.trim()) {
@@ -122,6 +147,15 @@ export function StoriesPage() {
   }
 
   const columns = useMemo<ColumnDef<Story>[]>(() => [
+    {
+      id: 'drag-handle',
+      header: '',
+      cell: () => (
+        <div className="flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-primary/50 transition-colors">
+          <GripVertical className="h-4 w-4" />
+        </div>
+      ),
+    },
     {
       accessorKey: 'code',
       header: 'Código',
@@ -288,52 +322,65 @@ export function StoriesPage() {
       {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col rounded-2xl border border-border bg-card shadow-2xl shadow-black/20">
         <div className="flex-1 overflow-auto">
-          <Table>
-            <TableHeader className="bg-muted/40 sticky top-0 z-10 backdrop-blur-xl border-b border-border">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className="h-11 text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap bg-transparent px-5">
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="group border-b border-border hover:bg-secondary/40 transition-colors cursor-pointer"
-                    onDoubleClick={() => { void navigate(`/stories/${row.original.id}`) }}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="py-3 px-5 align-middle border-none">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="stories-list">
+              {(provided) => (
+                <Table>
+                  <TableHeader className="bg-muted/40 sticky top-0 z-10 backdrop-blur-xl border-b border-border">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
+                        {headerGroup.headers.map((header) => (
+                          <TableHead key={header.id} className="h-11 text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap bg-transparent px-5">
+                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                          </TableHead>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-48 text-center border-none">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground space-y-3">
-                      <BookOpen className="h-8 w-8 opacity-20" />
-                      <p className="text-sm font-medium">
-                        {showArchived ? 'No hay historias eliminadas.' : 'No hay historias creadas todavía.'}
-                      </p>
-                      {!showArchived && (
-                        <Button variant="outline" size="sm" onClick={() => { setIsCreateOpen(true) }} className="mt-2 text-xs font-bold rounded-lg">
-                          Crear la primera
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </TableHeader>
+                  <TableBody {...provided.droppableProps} ref={provided.innerRef}>
+                    {table.getRowModel().rows.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <Draggable key={row.original.id} draggableId={row.original.id} index={row.index}>
+                          {(provided, snapshot) => (
+                            <TableRow
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`group border-b border-border hover:bg-secondary/40 transition-colors cursor-pointer ${snapshot.isDragging ? 'bg-secondary/60 shadow-lg' : ''}`}
+                              onDoubleClick={() => { void navigate(`/stories/${row.original.id}`) }}
+                            >
+                              {row.getVisibleCells().map((cell) => (
+                                <TableCell key={cell.id} className="py-3 px-5 align-middle border-none">
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          )}
+                        </Draggable>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="h-48 text-center border-none">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground space-y-3">
+                            <BookOpen className="h-8 w-8 opacity-20" />
+                            <p className="text-sm font-medium">
+                              {showArchived ? 'No hay historias eliminadas.' : 'No hay historias creadas todavía.'}
+                            </p>
+                            {!showArchived && (
+                              <Button variant="outline" size="sm" onClick={() => { setIsCreateOpen(true) }} className="mt-2 text-xs font-bold rounded-lg">
+                                Crear la primera
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {provided.placeholder}
+                  </TableBody>
+                </Table>
               )}
-            </TableBody>
-          </Table>
+            </Droppable>
+          </DragDropContext>
         </div>
       </div>
 

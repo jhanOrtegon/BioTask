@@ -1,10 +1,10 @@
-import { useMemo, useCallback, useState } from 'react'
+import { useMemo, useCallback, useState, useEffect } from 'react'
 import confetti from 'canvas-confetti'
 import type { DropResult } from '@hello-pangea/dnd'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useStoriesStore } from '@/features/stories/store'
 import { Badge } from '@/shared/ui/badge'
-import { KanbanSquare, BookOpen, CheckSquare, Calendar, Plus, RotateCcw } from 'lucide-react'
+import { KanbanSquare, BookOpen, CheckSquare, Calendar, Plus, RotateCcw, Play, Pause, Square, ListChecks, Search } from 'lucide-react'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { useNavigate } from 'react-router-dom'
@@ -13,6 +13,7 @@ import { useSprintsStore } from '@/features/sprints/store'
 import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { Button } from '@/shared/ui/button'
 
 import {
   Select,
@@ -33,32 +34,55 @@ const COLUMNS: { id: ColumnType, title: string, color: string }[] = [
 
 export function BoardPage() {
   const navigate = useNavigate()
-  const { stories, updateTask, stopTaskTimer, resetTaskTimer } = useStoriesStore()
+  const { stories, updateTask, startTaskTimer, pauseTaskTimer, stopTaskTimer, resetTaskTimer, reorderTask } = useStoriesStore()
   const { sprints } = useSprintsStore()
   const { startNewTask } = useTasksStore()
 
   const [resetTimerDialog, setResetTimerDialog] = useState<{ storyId: string; taskId: string; title: string } | null>(null)
-  const [selectedStoryId, setSelectedStoryId] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null)
 
   const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
+  const currentSprint = useMemo(() => {
+    if (selectedSprintId) return sprints.find(s => s.id === selectedSprintId)
+    return activeSprint
+  }, [sprints, selectedSprintId, activeSprint])
+
+  const [selectedStoryId, setSelectedStoryId] = useState<string>('all')
+
+  const { syncTasksIds } = useStoriesStore()
+  useEffect(() => {
+    syncTasksIds()
+  }, [syncTasksIds])
 
   // Get all active tasks across all stories
   const allTasks = useMemo(() => {
-    if (!activeSprint) return []
+    if (!currentSprint) return []
 
     return stories
       .filter(s => s.status === 'active' && 
-        activeSprint.storyIds.includes(s.id) && 
+        currentSprint.storyIds.includes(s.id) && 
         (selectedStoryId === 'all' || s.id === selectedStoryId)
       )
       .flatMap(s => s.tasks.map(t => ({ ...t, storyCode: s.code, storyTitle: s.title, storyId: s.id })))
       .filter(t => t.status !== 'archived' && t.id && t.storyId)
-  }, [stories, activeSprint, selectedStoryId])
+      .filter(t => {
+        if (!searchQuery) return true
+        const query = searchQuery.toLowerCase()
+        return (
+          t.title.toLowerCase().includes(query) ||
+          (t.code && t.code.toLowerCase().includes(query)) ||
+          t.storyCode.toLowerCase().includes(query) ||
+          t.storyTitle.toLowerCase().includes(query)
+        )
+      })
+      .sort((a, b) => a.position - b.position)
+  }, [stories, currentSprint, selectedStoryId, searchQuery])
 
   const sprintStories = useMemo(() => {
-    if (!activeSprint) return []
-    return stories.filter(s => activeSprint.storyIds.includes(s.id))
-  }, [stories, activeSprint])
+    if (!currentSprint) return []
+    return stories.filter(s => currentSprint.storyIds.includes(s.id))
+  }, [stories, currentSprint])
 
   const triggerConfetti = useCallback(() => {
     void confetti({
@@ -86,20 +110,52 @@ export function BoardPage() {
     if (!taskToMove) return
 
     const newStatus = destination.droppableId as ColumnType
-    
-    // Update store
-    // This will trigger a re-render and useMemo will recalculate the tasks properly
     const statusTypeMap: Record<ColumnType, 'pending' | 'in_progress' | 'completed'> = {
       'pending': 'pending',
       'in_progress': 'in_progress',
       'completed': 'completed'
     }
 
-    if (newStatus === 'completed') {
+    // Get tasks in the destination column (excluding the task being moved if it's already there)
+    const destTasks = allTasks.filter(t => t.status === newStatus && t.id !== draggableId)
+    
+    // Calculate new position
+    let newPosition: number
+    if (destTasks.length === 0) {
+      newPosition = 1000
+    } else if (destination.index === 0) {
+      newPosition = (destTasks[0].position || 0) / 2
+    } else if (destination.index >= destTasks.length) {
+      newPosition = (destTasks[destTasks.length - 1].position || 0) + 1000
+    } else {
+      const prevPos = destTasks[destination.index - 1].position
+      const nextPos = destTasks[destination.index].position
+      newPosition = (prevPos + nextPos) / 2
+    }
+
+    if (newStatus === 'completed' && taskToMove.status !== 'completed') {
       stopTaskTimer(taskToMove.storyId, taskToMove.id)
+      reorderTask(taskToMove.storyId, taskToMove.id, newPosition)
       triggerConfetti()
     } else {
-      updateTask(taskToMove.storyId, taskToMove.id, { status: statusTypeMap[newStatus] as 'pending' | 'in_progress' | 'completed' | 'archived' }, `Movido a ${COLUMNS.find(c => c.id === newStatus)?.title || newStatus} en el tablero`)
+      // Automate timer stop/pause if moved to pending
+      if (newStatus === 'pending') {
+        pauseTaskTimer(taskToMove.storyId, taskToMove.id)
+      } else if (newStatus === 'in_progress' && taskToMove.status !== 'in_progress') {
+        // Automate timer start if moved to in_progress
+        startTaskTimer(taskToMove.storyId, taskToMove.id)
+      }
+
+      // Update both status and position
+      updateTask(
+        taskToMove.storyId, 
+        taskToMove.id, 
+        { 
+          status: statusTypeMap[newStatus],
+          position: newPosition
+        }, 
+        `Movido a ${COLUMNS.find(c => c.id === newStatus)?.title || newStatus} en posición ${String(destination.index)}`
+      )
     }
   }
 
@@ -109,9 +165,12 @@ export function BoardPage() {
 
   return (
     <div className="h-full flex flex-col p-8 overflow-hidden bg-background">
-      <Breadcrumbs items={[
-        { label: 'Tablero Ágil' }
-      ]} />
+      <div className="flex items-center justify-between shrink-0">
+        <Breadcrumbs items={[
+          { label: 'Tablero Ágil', href: '/board' },
+          { label: 'Power Planner' }
+        ]} />
+      </div>
       <header className="shrink-0 space-y-4 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -131,36 +190,77 @@ export function BoardPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {activeSprint && (
+            {currentSprint && (
               <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg border border-border/50">
-                <div className="flex items-center gap-2 px-2 text-muted-foreground">
+                <div className="flex items-center gap-2 px-2 text-muted-foreground border-r border-border/50">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Sprint:</span>
+                </div>
+                <Select value={selectedSprintId || activeSprint?.id || ''} onValueChange={setSelectedSprintId}>
+                  <SelectTrigger className="h-8 w-[160px] bg-background border-none shadow-none text-xs font-bold">
+                    <SelectValue placeholder="Seleccionar Sprint" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sprints.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(s => (
+                      <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
+                        {s.name} {s.status === 'completed' ? '(F)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-2 px-2 text-muted-foreground border-l border-border/50">
                   <Filter className="h-3.5 w-3.5" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Filtrar:</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Historia:</span>
                 </div>
                 <Select value={selectedStoryId} onValueChange={setSelectedStoryId}>
-                  <SelectTrigger className="h-8 w-[200px] bg-background border-none shadow-none text-xs font-bold">
-                    <SelectValue placeholder="Todas las historias" />
+                  <SelectTrigger className="h-8 w-[160px] bg-background border-none shadow-none text-xs font-bold">
+                    <SelectValue placeholder="Todas" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all" className="text-xs font-bold">Todas las historias</SelectItem>
                     {sprintStories.map(story => (
                       <SelectItem key={story.id} value={story.id} className="text-xs font-bold">
-                        {story.code} - {story.title}
+                        {story.code}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
+            {activeSprint && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 gap-2 text-xs font-bold border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+                onClick={() => { void navigate('/planner') }}
+              >
+                <ListChecks className="h-3.5 w-3.5" />
+                Planificador
+              </Button>
+            )}
             <Badge variant="outline" className="font-mono text-xs font-bold py-1">
               {allTasks.length} Tareas Activas
             </Badge>
           </div>
         </div>
+
+        <div className="flex gap-4">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Buscar por tarea, historia o código (Jira)..." 
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value) }}
+              className="w-full bg-card/40 border border-border/50 rounded-2xl py-3 pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
+            />
+          </div>
+        </div>
       </header>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        {!activeSprint ? (
+        {!currentSprint ? (
           <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/5 p-12 text-center animate-in fade-in zoom-in duration-500">
             <div className="h-20 w-20 rounded-2xl bg-primary/5 border border-primary/10 grid place-items-center mb-6">
               <Calendar className="h-10 w-10 text-primary/40" />
@@ -190,7 +290,7 @@ export function BoardPage() {
                   </Badge>
                 </div>
                 
-                <Droppable droppableId={column.id}>
+                <Droppable droppableId={column.id} isDropDisabled={currentSprint.status === 'completed'}>
                   {(provided, snapshot) => (
                     <div
                       {...provided.droppableProps}
@@ -198,8 +298,8 @@ export function BoardPage() {
                       className={`flex-1 p-4 overflow-y-auto transition-colors ${snapshot.isDraggingOver ? 'bg-muted/40' : ''}`}
                     >
                       <div className="flex flex-col gap-3 min-h-[50px]">
-                        {tasksInColumn.map((task, index) => (
-                          <Draggable key={task.id} draggableId={task.id} index={index}>
+                         {tasksInColumn.map((task, index) => (
+                          <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={currentSprint.status === 'completed'}>
                             {(provided, snapshot) => (
                               <div
                                 ref={provided.innerRef}
@@ -261,36 +361,102 @@ export function BoardPage() {
                                     </div>
                                   )}
                                   
-                                  <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                                    <div className="flex items-center gap-3">
-                                      <Badge variant="secondary" className="text-[9px] px-1 py-0 shadow-none font-bold bg-muted/50 text-muted-foreground">
-                                        {task.type}
-                                      </Badge>
+                                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                                      <div className="flex items-center gap-3">
+                                        <Badge variant="secondary" className="font-black text-[10px] h-6">#{String(index + 1)}</Badge>
+                                        <Badge variant="secondary" className="text-[9px] px-1 py-0 shadow-none font-bold bg-muted/50 text-muted-foreground">
+                                          {task.type}
+                                        </Badge>
                                       {task.timeSpent !== undefined ? (
                                         <div className="flex items-center gap-2">
                                           <div className="flex items-center text-muted-foreground group-hover:text-primary transition-colors">
                                             <LiveTimer showIcon={true} timeSpent={task.timeSpent} timeLogs={task.timeLogs} className="text-[10px]" />
                                             {task.estimatedHours ? <span className="text-[9px] text-muted-foreground ml-1 font-bold">/ {task.estimatedHours}h</span> : null}
                                           </div>
-                                          {(task.timeSpent ?? 0) > 0 && (
-                                            <TooltipProvider>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <button 
-                                                    className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-md hover:bg-destructive/10"
-                                                    onClick={(e) => {
-                                                      e.preventDefault()
-                                                      e.stopPropagation()
-                                                      setResetTimerDialog({ storyId: task.storyId, taskId: task.id, title: task.title })
-                                                    }}
-                                                  >
-                                                    <RotateCcw className="h-3 w-3" />
-                                                  </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="font-bold">Reiniciar tiempo invertido</TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
-                                          )}
+                                          
+                                          <div className="flex items-center gap-1 ml-1">
+                                            {/* Timer Controls */}
+                                            {task.status !== 'completed' && currentSprint.status !== 'completed' && (
+                                              <>
+                                                {task.timeLogs?.some(l => !l.endedAt) ? (
+                                                  <TooltipProvider>
+                                                    <Tooltip>
+                                                      <TooltipTrigger asChild>
+                                                        <button 
+                                                          className="text-amber-500 hover:bg-amber-500/10 p-1 rounded-md transition-colors"
+                                                          onClick={(e) => {
+                                                            e.preventDefault()
+                                                            e.stopPropagation()
+                                                            pauseTaskTimer(task.storyId, task.id)
+                                                          }}
+                                                        >
+                                                          <Pause className="h-3 w-3 fill-current" />
+                                                        </button>
+                                                      </TooltipTrigger>
+                                                      <TooltipContent className="font-bold">Pausar tiempo</TooltipContent>
+                                                    </Tooltip>
+                                                  </TooltipProvider>
+                                                ) : (
+                                                  <TooltipProvider>
+                                                    <Tooltip>
+                                                      <TooltipTrigger asChild>
+                                                        <button 
+                                                          className="text-emerald-500 hover:bg-emerald-500/10 p-1 rounded-md transition-colors"
+                                                          onClick={(e) => {
+                                                            e.preventDefault()
+                                                            e.stopPropagation()
+                                                            startTaskTimer(task.storyId, task.id)
+                                                          }}
+                                                        >
+                                                          <Play className="h-3 w-3 fill-current" />
+                                                        </button>
+                                                      </TooltipTrigger>
+                                                      <TooltipContent className="font-bold">Iniciar tiempo</TooltipContent>
+                                                    </Tooltip>
+                                                  </TooltipProvider>
+                                                )}
+
+                                                <TooltipProvider>
+                                                  <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                      <button 
+                                                        className="text-destructive hover:bg-destructive/10 p-1 rounded-md transition-colors"
+                                                        onClick={(e) => {
+                                                          e.preventDefault()
+                                                          e.stopPropagation()
+                                                          stopTaskTimer(task.storyId, task.id)
+                                                          triggerConfetti()
+                                                        }}
+                                                      >
+                                                        <Square className="h-3 w-3 fill-current" />
+                                                      </button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="font-bold">Finalizar tarea</TooltipContent>
+                                                  </Tooltip>
+                                                </TooltipProvider>
+                                              </>
+                                            )}
+
+                                            {(task.timeSpent ?? 0) > 0 && currentSprint.status !== 'completed' && (
+                                              <TooltipProvider>
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <button 
+                                                      className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-md hover:bg-destructive/10"
+                                                      onClick={(e) => {
+                                                        e.preventDefault()
+                                                        e.stopPropagation()
+                                                        setResetTimerDialog({ storyId: task.storyId, taskId: task.id, title: task.title })
+                                                      }}
+                                                    >
+                                                      <RotateCcw className="h-3 w-3" />
+                                                    </button>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent className="font-bold">Reiniciar tiempo</TooltipContent>
+                                                </Tooltip>
+                                              </TooltipProvider>
+                                            )}
+                                          </div>
                                         </div>
                                       ) : null}
                                     </div>
@@ -319,7 +485,7 @@ export function BoardPage() {
                         ))}
                         {provided.placeholder}
                         
-                        {column.id === 'pending' && (
+                        {column.id === 'pending' && currentSprint.status !== 'completed' && (
                           <button
                             className="mt-2 w-full flex items-center gap-2 text-muted-foreground/40 hover:text-primary hover:bg-primary/5 border border-dashed border-border/40 hover:border-primary/30 rounded-xl p-3 text-xs font-semibold transition-all"
                             onClick={() => {

@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react"
 import { useTasksStore } from "@/features/tasks/store"
 import { useStoriesStore } from "@/features/stories/store"
+import { useSprintsStore } from "@/features/sprints/store"
+import { Badge } from "@/shared/ui/badge"
 import { DynamicTaskEditor } from "@/features/tasks/ui/DynamicTaskEditor"
 import { JiraPreview } from "@/features/tasks/ui/JiraPreview"
 import { markdownToJira } from "@/features/tasks/utils"
@@ -23,8 +25,16 @@ export function EditorPage() {
   const { role } = useAuthStore()
   const { currentTask, startNewTask, setCurrentTask, setJiraContent, updateTaskData, updateTaskInfo, resetTask } = useTasksStore()
   const { stories, addTaskToStory, updateTask } = useStoriesStore()
+  const { sprints } = useSprintsStore()
   const navigate = useNavigate()
   const { storyId, taskId } = useParams<{ storyId?: string; taskId?: string }>()
+
+  const isReadOnly = (() => {
+    const sid = storyId || currentTask?.storyId
+    if (!sid) return false
+    const sprint = sprints.find(s => s.storyIds.includes(sid))
+    return sprint?.status === 'completed'
+  })()
 
   const [showPreviewPanel, setShowPreviewPanel] = useState(false)
   const [previewTab, setPreviewTab] = useState<'jira' | 'visual'>('visual')
@@ -245,6 +255,11 @@ export function EditorPage() {
             <h2 className="text-lg font-bold tracking-tight">Editor</h2>
             <p className="text-xs text-muted-foreground">Completa los campos para generar tu Jira</p>
           </div>
+          {isReadOnly && (
+            <Badge variant="outline" className="bg-muted border-muted-foreground/30 text-muted-foreground font-black px-3 py-1 text-[10px] uppercase tracking-wider ml-2">
+              Solo Lectura (Sprint Finalizado)
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Descargar JSON de ejemplo */}
@@ -368,6 +383,7 @@ export function EditorPage() {
             size="sm"
             className="gap-2 text-xs font-bold text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => { setShowClearConfirm(true) }}
+            disabled={isReadOnly}
           >
             <Eraser className="h-3.5 w-3.5" /> Limpiar Todo
           </Button>
@@ -387,7 +403,12 @@ export function EditorPage() {
             Cancelar
           </Button>
           {role !== 'Editor' && (
-            <Button size="sm" className="gap-2 font-bold shadow-lg hover:shadow-primary/20 transition-all" onClick={handleFinish}>
+            <Button 
+                size="sm" 
+                className="gap-2 font-bold shadow-lg hover:shadow-primary/20 transition-all" 
+                onClick={handleFinish}
+                disabled={isReadOnly}
+            >
               {currentTask.id ? (
                 <><Edit className="h-3.5 w-3.5" /> Actualizar Tarea</>
               ) : (
