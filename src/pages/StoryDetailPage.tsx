@@ -30,12 +30,11 @@ import {
   SelectValue,
 } from "@/shared/ui/select"
 import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { AuditTimeline } from '@/features/stories/ui/AuditTimeline'
-import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Eye, AlertCircle } from 'lucide-react'
+import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Eye,} from 'lucide-react'
 import { DynamicTaskEditor } from '@/features/tasks/ui/DynamicTaskEditor'
 import type { TaskDraft } from '@/features/tasks/types'
 import { toast } from 'sonner'
@@ -56,7 +55,7 @@ import { RotateCcw } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { 
+import {
   Form,
   FormControl,
   FormField,
@@ -83,11 +82,11 @@ function formatDate(iso: string) {
 export function StoryDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { 
-    stories, 
-    archiveTask, 
-    startTaskTimer, 
-    pauseTaskTimer, 
+  const {
+    stories,
+    archiveTask,
+    startTaskTimer,
+    pauseTaskTimer,
     stopTaskTimer,
     resetTaskTimer,
     updateTask,
@@ -206,13 +205,13 @@ export function StoryDetailPage() {
         const s = task.status
 
         const handleStatusChange = (newStatus: string) => {
-          const statusNames: Record<string, string> = { 
-            'pending': 'Por Hacer', 
-            'in_progress': 'En Progreso', 
+          const statusNames: Record<string, string> = {
+            'pending': 'Por Hacer',
+            'in_progress': 'En Progreso',
             'completed': 'Completada',
             'archived': 'Eliminada'
           }
-          
+
           if (newStatus === 'archived') {
             setArchiveDialog({ taskId: task.id, title: task.title })
           } else if (newStatus === 'completed') {
@@ -249,7 +248,7 @@ export function StoryDetailPage() {
       cell: ({ row }) => {
         const task = row.original
         const isTimerRunning = (task.timeLogs || []).some((l: TimeLog) => !l.endedAt)
-        
+
         return (
           <div className="flex items-center gap-2">
             <div className="bg-muted/50 px-2 py-1 flex items-center justify-center rounded border border-border/50 text-xs text-foreground font-medium">
@@ -263,7 +262,7 @@ export function StoryDetailPage() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
+                      <Button
                         variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
                         onClick={() => { setViewTask(task) }}
                       >
@@ -272,10 +271,10 @@ export function StoryDetailPage() {
                     </TooltipTrigger>
                     <TooltipContent className="font-bold">Ver detalles de la tarea</TooltipContent>
                   </Tooltip>
-                  
+
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
+                      <Button
                         variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
                         onClick={() => { if (story) void navigate(`/editor/${story.id}/${task.id}`) }}
                       >
@@ -286,14 +285,14 @@ export function StoryDetailPage() {
                   </Tooltip>
                 </TooltipProvider>
                 {!isTimerRunning ? (
-                  <Button 
+                  <Button
                     variant="ghost" size="icon" className="h-6 w-6 text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10"
                     onClick={() => { if (story) startTaskTimer(story.id, task.id) }}
                   >
                     <Play className="h-3 w-3" />
                   </Button>
                 ) : (
-                  <Button 
+                  <Button
                     variant="ghost" size="icon" className="h-6 w-6 text-amber-500 hover:text-amber-500 hover:bg-amber-500/10 animate-pulse"
                     onClick={() => { if (story) pauseTaskTimer(story.id, task.id) }}
                   >
@@ -301,9 +300,9 @@ export function StoryDetailPage() {
                   </Button>
                 )}
                 <div className="w-px h-6 bg-border/50" />
-                <Button 
+                <Button
                   variant="ghost" size="icon" className="h-6 w-6 text-blue-500 hover:text-blue-500 hover:bg-blue-500/10"
-                  onClick={() => { 
+                  onClick={() => {
                     if (story) {
                       stopTaskTimer(story.id, task.id)
                       triggerConfetti()
@@ -321,9 +320,9 @@ export function StoryDetailPage() {
               <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                    variant="ghost" 
-                    size="sm" 
+                      <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-primary transition-colors"
                     onClick={() => { setResetTimerDialog({ taskId: task.id, title: task.title }) }}
                   >
@@ -375,15 +374,15 @@ export function StoryDetailPage() {
                         variant="ghost"
                         size="icon"
                         className={`h-8 w-8 rounded-lg ${task.status === 'in_progress' ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
-                        onClick={() => { 
+                        onClick={() => {
                           if (task.status === 'in_progress') return
                           const sId = task.storyId || story?.id || findStoryIdForTask(task.id)
                           if (sId && task.id) {
                             void navigate(`/editor/${sId}/${task.id}`)
                           } else {
-                            setShowErrorDialog({ 
-                              title: "Historia no encontrada", 
-                              desc: "No se puede abrir el editor porque no se encontró la relación con la historia." 
+                            setShowErrorDialog({
+                              title: "Historia no encontrada",
+                              desc: "No se puede abrir el editor porque no se encontró la relación con la historia."
                             })
                           }
                         }}
@@ -467,7 +466,7 @@ export function StoryDetailPage() {
                 <h1 className="text-2xl font-black tracking-tight text-foreground mt-1">{story.title}</h1>
               </div>
             </div>
-            
+
             {/* Progress Bar Logics */}
             <div className="pl-13 w-full max-w-sm space-y-1.5 pt-2">
               <div className="flex justify-between items-center text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -475,8 +474,8 @@ export function StoryDetailPage() {
                 <span>{activeTasks.length > 0 ? Math.round((activeTasks.filter(t => t.status === 'completed').length / activeTasks.length) * 100) : 0}% ({activeTasks.filter(t => t.status === 'completed').length}/{activeTasks.length})</span>
               </div>
               <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
-                <div 
-                  className="h-full bg-emerald-500 transition-all duration-500 ease-in-out" 
+                <div
+                  className="h-full bg-emerald-500 transition-all duration-500 ease-in-out"
                   style={{ width: `${String(activeTasks.length > 0 ? Math.round((activeTasks.filter(t => t.status === 'completed').length / activeTasks.length) * 100) : 0)}%` }}
                 />
               </div>
@@ -618,7 +617,7 @@ export function StoryDetailPage() {
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={e => { e.preventDefault(); handleUpdateClick(); }} className="space-y-4">
+              <form onSubmit={e => { e.preventDefault(); void handleUpdateClick(); }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -669,7 +668,7 @@ export function StoryDetailPage() {
                     <FormItem>
                       <FormLabel>Descripción</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Descripción opcional..."
                           className="min-h-[100px] bg-background rounded-2xl"
                           {...field}
@@ -703,7 +702,7 @@ export function StoryDetailPage() {
         open={!!resetTimerDialog}
         onOpenChange={(open) => { if (!open) setResetTimerDialog(null) }}
         onConfirm={() => {
-          if (resetTimerDialog && story) {
+          if (resetTimerDialog) {
             resetTaskTimer(story.id, resetTimerDialog.taskId)
             toast.success('Contador reiniciado')
             setResetTimerDialog(null)
@@ -718,7 +717,7 @@ export function StoryDetailPage() {
       <ConfirmDialog
         open={!!showErrorDialog}
         onOpenChange={(open) => { if (!open) setShowErrorDialog(null) }}
-        onConfirm={() => setShowErrorDialog(null)}
+        onConfirm={() => {setShowErrorDialog(null)}}
         title={showErrorDialog?.title || "Error"}
         description={showErrorDialog?.desc || ""}
         confirmText="Entendido"
