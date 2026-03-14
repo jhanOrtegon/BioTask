@@ -11,9 +11,11 @@ import { BoardPage } from '@/pages/BoardPage'
 import { TasksPage } from '@/pages/TasksPage'
 import { SprintsPage } from '@/pages/SprintsPage'
 import { SprintPlannerPage } from '@/pages/SprintPlannerPage'
+import { TeamPage } from '@/pages/TeamPage'
 import { MainLayout } from '@/shared/ui/main-layout'
 import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/shared/ui/tooltip'
+import { NuqsAdapter } from 'nuqs/adapters/react-router/v7'
 
 function App() {
   return (
@@ -29,35 +31,38 @@ function App() {
       />
       <TooltipProvider>
         <BrowserRouter>
-          <Routes>
-            {/* Rutas públicas */}
-            <Route element={<GuestRoute />}>
-              <Route path="/login" element={<LoginPage />} />
-            </Route>
+          <NuqsAdapter>
+            <Routes>
+              {/* Rutas públicas */}
+              <Route element={<GuestRoute />}>
+                <Route path="/login" element={<LoginPage />} />
+              </Route>
 
-            {/* Rutas compartidas (Admin y Editor) */}
-            <Route element={<ProtectedRoute allowedRoles={['Administrador', 'Editor']} />}>
-              <Route element={<MainLayout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="templates" element={<TemplatesPage />} />
-                <Route path="editor" element={<EditorPage />} />
-                <Route path="editor/:storyId/:taskId" element={<EditorPage />} />
-                
-                {/* Rutas exclusivas de Administrador (dentro del mismo layout) */}
-                <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
-                  <Route path="stories" element={<StoriesPage />} />
-                  <Route path="stories/:id" element={<StoryDetailPage />} />
-                  <Route path="sprints" element={<SprintsPage />} />
-                  <Route path="tasks" element={<TasksPage />} />
-                  <Route path="board" element={<BoardPage />} />
-                  <Route path="planner" element={<SprintPlannerPage />} />
+              {/* Rutas compartidas (Admin y Editor) */}
+              <Route element={<ProtectedRoute allowedRoles={['Administrador', 'Editor']} />}>
+                <Route element={<MainLayout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="templates" element={<TemplatesPage />} />
+                  <Route path="editor" element={<EditorPage />} />
+                  <Route path="editor/:storyId/:taskId" element={<EditorPage />} />
+                  
+                  {/* Rutas exclusivas de Administrador (dentro del mismo layout) */}
+                  <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
+                    <Route path="stories" element={<StoriesPage />} />
+                    <Route path="stories/:id" element={<StoryDetailPage />} />
+                    <Route path="sprints" element={<SprintsPage />} />
+                    <Route path="tasks" element={<TasksPage />} />
+                    <Route path="board" element={<BoardPage />} />
+                    <Route path="planner" element={<SprintPlannerPage />} />
+                    <Route path="team" element={<TeamPage />} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </NuqsAdapter>
         </BrowserRouter>
       </TooltipProvider>
     </div>

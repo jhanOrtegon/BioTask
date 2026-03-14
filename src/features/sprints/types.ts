@@ -24,4 +24,5 @@ export interface SprintsState {
   addStoryToSprint: (sprintId: string, storyId: string) => void;
   removeStoryFromSprint: (sprintId: string, storyId: string) => void;
   setSprintStories: (sprintId: string, storyIds: string[]) => void;
+  setSprints: (sprints: Sprint[]) => void;
 }

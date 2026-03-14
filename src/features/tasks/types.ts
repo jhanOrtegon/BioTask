@@ -13,7 +13,7 @@ export interface TaskDraft {
   templateId?: string;
   storyId?: string;
   code?: string;
-  techPrefix: 'BE-' | 'FE-';
+  techPrefix?: 'BE-' | 'FE-';
   title: string;
   type: TaskType;
   
@@ -29,6 +29,7 @@ export interface TaskDraft {
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
   checklists?: ChecklistItem[];
+  assignedTo?: string;
   jiraContent?: string;
   createdAt: string;
 }

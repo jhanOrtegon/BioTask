@@ -12,7 +12,8 @@ import {
   BookOpen,
   CalendarDays,
   KanbanSquare,
-  CheckSquare
+  CheckSquare,
+  Users
 } from "lucide-react"
 import { cn } from "@/shared/utils"
 import { useState } from "react"
@@ -41,6 +42,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "ADMIN",
     items: [
+      { icon: Users, label: "Equipo", path: "/team" },
       { icon: Settings, label: "Plantillas", path: "/templates" },
     ],
   },

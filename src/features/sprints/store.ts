@@ -75,7 +75,8 @@ export const useSprintsStore = create<SprintsState>()(
         sprints: state.sprints.map(s => 
           s.id === sprintId ? { ...s, storyIds, updatedAt: new Date().toISOString() } : s
         )
-      }))
+      })),
+      setSprints: (sprints: Sprint[]) => set({ sprints })
     }),
     {
       name: 'sprints-storage'

@@ -1,6 +1,7 @@
 import { useTasksStore } from "../store"
 import { useTemplatesStore } from "@/features/templates/store"
 import { useStoriesStore } from "@/features/stories/store"
+import { useTeamStore } from "@/features/team/store"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
@@ -27,8 +28,8 @@ import { Breadcrumbs } from "@/shared/ui/breadcrumbs"
 import { toast } from "sonner"
 
 // ── Section Header Component ──
-const SectionHeader = ({ number, icon: Icon, title, color, action }: {
-  number: string; icon: React.ElementType; title: string; color: string; action?: React.ReactNode
+const SectionHeader = ({ number, icon: Icon, title, color, action, isRequired }: {
+  number: string; icon: React.ElementType; title: string; color: string; action?: React.ReactNode; isRequired?: boolean
 }) => (
   <div className="flex items-center justify-between py-3 border-b border-border/50">
     <div className="flex items-center gap-3">
@@ -39,7 +40,14 @@ const SectionHeader = ({ number, icon: Icon, title, color, action }: {
         <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
       </div>
       <Icon className={`h-4 w-4 ${color}`} />
-      <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">{title}</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">{title}</h3>
+        {isRequired && (
+          <span className="text-[9px] font-bold text-amber-600 bg-amber-600/10 px-1.5 py-0.5 rounded border border-amber-600/20 uppercase tracking-tighter">
+            Obligatorio
+          </span>
+        )}
+      </div>
     </div>
     {action}
   </div>
@@ -59,6 +67,7 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
   const { templates } = useTemplatesStore()
   const { stories } = useStoriesStore()
   
+  const { members } = useTeamStore()
   const [showCommitDialog, setShowCommitDialog] = useState(false)
   const [commitLang, setCommitLang] = useState<'es' | 'en'>('en')
   const [copied, setCopied] = useState(false)
@@ -318,7 +327,7 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">PRE</Label>
               <Select 
                 disabled={readOnly}
-                value={currentTask.techPrefix} 
+                value={currentTask.techPrefix || ''} 
                 onValueChange={(v: "BE-" | "FE-") => { updateTaskInfo({ techPrefix: v }) }}
               >
                 <SelectTrigger className="h-11 bg-background font-mono text-xs font-bold">
@@ -373,6 +382,32 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
                   <SelectItem value="medium">🔵 Media</SelectItem>
                   <SelectItem value="high">🟠 Alta</SelectItem>
                   <SelectItem value="urgent">🔴 Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-12 lg:col-span-12 space-y-1.5 mt-1 border-t border-border/10 pt-3">
+              <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Asignado a</Label>
+              <Select 
+                disabled={readOnly}
+                value={currentTask.assignedTo || 'unassigned'} 
+                onValueChange={(v: string) => { updateTaskInfo({ assignedTo: v === 'unassigned' ? undefined : v }) }}
+              >
+                <SelectTrigger className="h-11 bg-background font-bold text-xs">
+                  <SelectValue placeholder="Sin asignar" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border shadow-2xl">
+                  <SelectItem value="unassigned" className="text-muted-foreground italic">🚫 Sin asignar</SelectItem>
+                  {members.map(m => (
+                    <SelectItem key={m.id} value={m.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary">
+                          {m.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span>{m.name}</span>
+                        <span className="text-[10px] opacity-50 font-normal">({m.role})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -432,7 +467,13 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
       {hasObjective && (
         <div className="border-x border-[0px] border-b border-border bg-card">
           <div className="p-5 pt-4">
-            <SectionHeader number="01" icon={Hash} title="Objetivo" color="text-primary" />
+            <SectionHeader 
+              number="01" 
+              icon={Hash} 
+              title="Objetivo" 
+              color="text-primary" 
+              isRequired={template?.requiredObjective}
+            />
             <div className="mt-4">
               <Textarea 
                 disabled={readOnly}
@@ -504,7 +545,11 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
         <div className="border-x border-border bg-card">
           <div className="px-5">
             <SectionHeader 
-              number="03" icon={Globe} title="Servicios / API" color="text-blue-500"
+              number="03" 
+              icon={Globe} 
+              title="Servicios / API" 
+              color="text-blue-500"
+              isRequired={template?.requiredServices}
               action={!readOnly && (
                 <Button onClick={() => { handleAddService() }} size="sm" variant="ghost" className="h-7 gap-1.5 text-[10px] font-bold text-blue-500 hover:text-blue-500 hover:bg-blue-500/10">
                   <PlusCircle className="h-3 w-3" /> Endpoint
@@ -640,7 +685,11 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
             <div>
               <div className="px-5">
                 <SectionHeader 
-                  number="04" icon={Hash} title="Requerimientos" color="text-emerald-500"
+                  number="04" 
+                  icon={Hash} 
+                  title="Requerimientos" 
+                  color="text-emerald-500"
+                  isRequired={template?.requiredRequirements}
                   action={!readOnly && (
                     <Button onClick={() => { handleAddListItem('requirements') }} size="sm" variant="ghost" className="h-7 px-2 text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10">
                       <Plus className="h-3 w-3" />
@@ -690,7 +739,11 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
             <div>
               <div className="px-5">
                 <SectionHeader 
-                  number="05" icon={Hash} title="Validaciones" color="text-amber-500"
+                  number="05" 
+                  icon={Hash} 
+                  title="Validaciones" 
+                  color="text-amber-500"
+                  isRequired={template?.requiredValidations}
                   action={!readOnly && (
                     <Button onClick={() => { handleAddListItem('validations') }} size="sm" variant="ghost" className="h-7 px-2 text-amber-500 hover:text-amber-500 hover:bg-amber-500/10">
                       <Plus className="h-3 w-3" />

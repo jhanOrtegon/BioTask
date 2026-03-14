@@ -36,13 +36,23 @@ import {
 } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
+import { useTeamStore } from '@/features/team/store'
+import { getTaskAlertStatus } from '@/shared/utils/task-utils'
+import { cn } from '@/shared/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip'
+import { AlertCircle, AlertTriangle, Info, Users as UsersIcon, Search } from 'lucide-react'
+import { useQueryState, parseAsBoolean } from 'nuqs'
+import { Input } from '@/shared/ui/input'
 
 export function TasksPage() {
   const navigate = useNavigate()
   const { stories, updateTask, stopTaskTimer, archiveTask } = useStoriesStore()
+  const { getMemberById } = useTeamStore()
   
-  const [selectedStoryId, setSelectedStoryId] = useState<string>('all')
-  const [showArchived, setShowArchived] = useState<boolean>(false)
+  const [selectedStoryId, setSelectedStoryId] = useQueryState('story', { defaultValue: 'all' })
+  const [showArchived, setShowArchived] = useQueryState('archived', parseAsBoolean.withDefault(false))
+  const [search, setSearch] = useQueryState('q', { defaultValue: '' })
+
   const [archiveDialog, setArchiveDialog] = useState<{ taskId: string; title: string; storyId: string } | null>(null)
   const [viewTask, setViewTask] = useState<TrackedTask | null>(null)
 
@@ -55,17 +65,24 @@ export function TasksPage() {
     for (const story of stories) {
       if (selectedStoryId !== 'all' && story.id !== selectedStoryId) continue;
       
-      const storyTasks = story.tasks.map(t => ({
-        ...t,
-        storyData: story
-      }))
+      const filteredTasks = story.tasks
+        .filter(t => (showArchived ? true : t.status !== 'archived'))
+        .filter(t => {
+          if (!search) return true
+          const term = search.toLowerCase()
+          return t.title.toLowerCase().includes(term) || (t.code && t.code.toLowerCase().includes(term))
+        })
+        .map(t => ({
+          ...t,
+          storyData: story
+        }))
       
-      tasks = tasks.concat(storyTasks)
+      tasks = tasks.concat(filteredTasks)
     }
     
     // Filter by status (Archived / Active)
     return tasks.filter(t => showArchived ? t.status === 'archived' : t.status !== 'archived')
-  }, [stories, selectedStoryId, showArchived])
+  }, [stories, selectedStoryId, showArchived, search])
 
   const findStoryIdForTask = useCallback((taskId: string) => {
     const story = stories.find(s => s.tasks.some(t => t.id === taskId))
@@ -85,6 +102,28 @@ export function TasksPage() {
               </span>
             )}
             <p className="font-semibold text-foreground text-[13px] truncate">{row.original.title}</p>
+            
+            {getTaskAlertStatus(row.original).length > 0 && (
+              <div className="flex gap-1">
+                {getTaskAlertStatus(row.original).map((alert, i) => (
+                  <TooltipProvider key={i}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className={cn(
+                          "h-4 w-4 rounded-full flex items-center justify-center shrink-0",
+                          alert.type === 'error' ? 'bg-red-500 text-white' : 
+                          alert.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white'
+                        )}>
+                          {alert.type === 'error' ? <AlertCircle className="h-2.5 w-2.5" /> : 
+                           alert.type === 'warning' ? <AlertTriangle className="h-2.5 w-2.5" /> : <Info className="h-2.5 w-2.5" />}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="font-bold text-[10px] p-2">{alert.message}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ),
@@ -107,6 +146,25 @@ export function TasksPage() {
           {row.original.type}
         </Badge>
       ),
+    },
+    {
+      id: 'assignedTo',
+      header: 'Responsable',
+      cell: ({ row }) => {
+        const member = row.original.assignedTo ? getMemberById(row.original.assignedTo) : null
+        return (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-black text-primary overflow-hidden">
+              {member?.avatarUrl ? (
+                <img src={member.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                member?.name.charAt(0) || <UsersIcon className="h-3 w-3" />
+              )}
+            </div>
+            <span className="text-xs font-medium text-muted-foreground truncate max-w-[100px]">{member?.name || 'Unassigned'}</span>
+          </div>
+        )
+      }
     },
     {
       accessorKey: 'status',
@@ -213,7 +271,7 @@ export function TasksPage() {
         )
       },
     },
-  ], [navigate, updateTask, stopTaskTimer, findStoryIdForTask])
+  ], [navigate, updateTask, stopTaskTimer, findStoryIdForTask, getMemberById])
 
   const table = useReactTable({
     data: allTasks,
@@ -240,30 +298,41 @@ export function TasksPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
-           <Select value={selectedStoryId} onValueChange={setSelectedStoryId}>
-             <SelectTrigger className="w-[240px] h-10 bg-card border-border font-medium text-xs">
-               <SelectValue placeholder="Filtrar por Historia" />
-             </SelectTrigger>
-             <SelectContent>
-               <SelectItem value="all" className="text-xs font-bold">Todas las Historias</SelectItem>
-               {activeStories.map(s => (
-                 <SelectItem key={s.id} value={s.id} className="text-xs">
-                   {s.code} - {s.title}
-                 </SelectItem>
-               ))}
-             </SelectContent>
-           </Select>
-           
-           <Button
-            variant="outline"
-            size="sm"
-            className="text-xs font-bold h-10 px-4"
-            onClick={() => { setShowArchived(!showArchived) }}
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por título o código..." 
+              className="pl-10 h-10 rounded-xl bg-secondary/50 border-primary/10 focus:ring-primary/20"
+              value={search}
+              onChange={(e) => { void setSearch(e.target.value || null) }}
+            />
+          </div>
+
+          <Select value={selectedStoryId} onValueChange={(v) => { void setSelectedStoryId(v) }}>
+            <SelectTrigger className="w-full md:w-[250px] h-10 rounded-xl bg-secondary/50 border-primary/10 font-bold text-xs">
+              <SelectValue placeholder="Filtrar por Historia" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border-border rounded-xl">
+              <SelectItem value="all" className="font-bold text-xs uppercase tracking-wider">Todas las Historias</SelectItem>
+              {activeStories.map(s => (
+                <SelectItem key={s.id} value={s.id} className="text-xs">{s.code}: {s.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="ghost"
+            className={cn(
+              "h-10 rounded-xl border border-primary/10 px-4 text-xs font-bold transition-all",
+              showArchived ? "bg-primary/20 text-primary border-primary/30" : "text-muted-foreground hover:bg-secondary"
+            )}
+            onClick={() => { void setShowArchived(!showArchived || null) }}
           >
-            {showArchived ? 'Ver Activas' : 'Ver Eliminadas'}
+            {showArchived ? 'Ocultar Archivadas' : 'Ver Archivadas'}
           </Button>
         </div>
+
       </header>
       
       {/* Table */}

@@ -7,25 +7,40 @@ import { useStoriesStore } from '@/features/stories/store'
 import { useAuthStore } from '@/features/auth/store'
 import { useTasksStore } from '@/features/tasks/store'
 import { useSprintsStore } from '@/features/sprints/store'
-import { BookOpen, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as PieChartIcon, RefreshCcw, Zap, Timer, TrendingDown } from 'lucide-react'
+import { useTeamStore } from '@/features/team/store'
+import { Tooltip as ShadcnTooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/shared/ui/tooltip'
+import { BookOpen, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as PieChartIcon, RefreshCcw, Zap, Timer, TrendingDown, BarChart3 } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts'
-import { Tooltip as ShadcnTooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import { toast } from 'sonner'
 import { format, subDays, isSameDay, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { generateSeedData } from '@/shared/utils/seed-data'
 
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
 
 export function Dashboard() {
   const { role } = useAuthStore()
   const navigate = useNavigate()
-  const { stories, syncTasksIds } = useStoriesStore()
+  const { stories, syncTasksIds, setStories } = useStoriesStore()
   const { startNewTask } = useTasksStore()
-  const { sprints } = useSprintsStore()
+  const { sprints, setSprints } = useSprintsStore()
+  const { setMembers, getMemberById } = useTeamStore()
 
   const handleSync = () => {
     syncTasksIds()
     toast.success('Sincronización completada', { description: 'Las tareas sin ID han sido reparadas.' })
+  }
+
+  const handleSeed = () => {
+    if (confirm('¿Estás seguro? Esto borrará tus datos actuales y cargará la simulación de 1 mes con 15 desarrolladores.')) {
+      const data = generateSeedData()
+      setMembers(data.members)
+      setStories(data.stories)
+      setSprints(data.sprints)
+      toast.success('Simulación cargada', { 
+        description: 'Se han generado 15 miembros, 2 sprints y múltiples historias con tracking real.' 
+      })
+    }
   }
 
   const activeStories = useMemo(() => stories.filter(s => s.status === 'active'), [stories])
@@ -47,18 +62,37 @@ export function Dashboard() {
     return Object.entries(typeCount).map(([name, value]) => ({ name, value }))
   }, [allTasksArray])
 
-  const barData = useMemo(() => {
-    return activeStories.slice(0, 5).map(story => {
-      const totalSpentSeconds = story.tasks.reduce((acc, t) => acc + (t.timeSpent || 0), 0)
-      const totalEstimatedHours = story.tasks.reduce((acc, t) => acc + (t.estimatedHours || 0), 0)
-
-      return {
-        name: story.code,
-        Invertido: Number((totalSpentSeconds / 3600).toFixed(1)),
-        Estimado: Number(totalEstimatedHours.toFixed(1))
+  const teamLoadData = useMemo(() => {
+    const load: Record<string, number> = {}
+    allTasksArray.forEach(t => {
+      if (t.assignedTo) {
+        const member = getMemberById(t.assignedTo)
+        if (member) {
+          load[member.name] = (load[member.name] || 0) + 1
+        }
       }
     })
-  }, [activeStories])
+    return Object.entries(load)
+      .map(([name, value]) => ({ name, Tareas: value }))
+      .sort((a, b) => b.Tareas - a.Tareas)
+      .slice(0, 8)
+  }, [allTasksArray, getMemberById])
+
+  const specialtyLoadData = useMemo(() => {
+    const load: Record<string, number> = {}
+    allTasksArray.forEach(t => {
+      if (t.assignedTo) {
+        const member = getMemberById(t.assignedTo)
+        if (member) {
+          const spec = member.specialty || 'General'
+          load[spec] = (load[spec] || 0) + 1
+        }
+      }
+    })
+    return Object.entries(load)
+      .map(([name, value]) => ({ name, Tareas: value }))
+      .sort((a, b) => b.Tareas - a.Tareas)
+  }, [allTasksArray, getMemberById])
 
   // --- Sprint Pulse Logic ---
   const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
@@ -145,16 +179,16 @@ export function Dashboard() {
 
   const todayMetrics = useMemo(() => {
     const today = dailyPerformance[dailyPerformance.length - 1]
-    const seconds = today?.seconds || 0
-    const hours = today?.hours || 0
+    const seconds = today.seconds
+    const hours = today.hours
     
     let formattedTime = '0 min'
     if (seconds < 3600) {
-      formattedTime = `${Math.floor(seconds / 60)} min`
+      formattedTime = `${String(Math.floor(seconds / 60))} min`
     } else {
       const h = Math.floor(seconds / 3600)
       const m = Math.floor((seconds % 3600) / 60)
-      formattedTime = `${h}h ${m}m`
+      formattedTime = `${String(h)}h ${String(m)}m`
     }
 
     let status = 'Modo Calma'
@@ -178,6 +212,45 @@ export function Dashboard() {
     return { hours, status, icon, color, formattedTime }
   }, [dailyPerformance])
 
+  // --- NUEVO: Métricas de Desviación para el Punto 1 del Roadmap ---
+  const deviationMetrics = useMemo(() => {
+    let totalEst = 0
+    let totalReal = 0
+    
+    // Desglose por tipo (BE vs FE)
+    const typeDeviation: Record<string, { est: number, real: number }> = {
+      'BE-': { est: 0, real: 0 },
+      'FE-': { est: 0, real: 0 }
+    }
+
+    allTasksArray.forEach(task => { 
+      const est = task.estimatedHours || 0
+      const real = (task.timeSpent || 0) / 3600
+      totalEst += est
+      totalReal += real
+
+      const prefix = (task as { techPrefix?: string }).techPrefix || (task.code?.startsWith('BE') ? 'BE-' : 'FE-')
+      if (typeDeviation[prefix]) {
+        typeDeviation[prefix].est += est
+        typeDeviation[prefix].real += real
+      }
+    })
+
+    const accuracy = totalEst > 0 ? Math.max(0, 100 - (Math.abs(totalReal - totalEst) / totalEst) * 100) : 100
+    const status = totalReal > totalEst ? 'Excedido' : totalReal < totalEst * 0.8 ? 'Sub-estimado' : 'Saludable'
+    
+    return {
+      totalEst: Number(totalEst.toFixed(1)),
+      totalReal: Number(totalReal.toFixed(1)),
+      accuracy: Math.round(accuracy),
+      status,
+      typeData: [
+        { name: 'Backend', Estimado: Number(typeDeviation['BE-'].est.toFixed(1)), Real: Number(typeDeviation['BE-'].real.toFixed(1)) },
+        { name: 'Frontend', Estimado: Number(typeDeviation['FE-'].est.toFixed(1)), Real: Number(typeDeviation['FE-'].real.toFixed(1)) }
+      ]
+    }
+  }, [allTasksArray])
+  
 
   return (
     <div className="h-full overflow-y-auto bg-background p-8">
@@ -194,13 +267,31 @@ export function Dashboard() {
               Bienvenido a BioTask Standard Edition. Gestiona tus historias de Jira y redacta tareas técnicas estructuradas.
             </p>
           </div>
-          <div className="flex gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             {role !== 'Editor' && (
               <>
+                <TooltipProvider>
+                  <ShadcnTooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-10 w-10 md:h-12 md:w-12 rounded-2xl border-2 border-dashed border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                        onClick={handleSeed}
+                      >
+                        <Sparkles className="h-5 w-5 text-primary group-hover:scale-125 transition-transform" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-primary text-primary-foreground font-black border-none px-4 py-2">
+                      Sembrar Datos Demo (4 Sprints, 20 Devs)
+                    </TooltipContent>
+                  </ShadcnTooltip>
+                </TooltipProvider>
+
                 <ShadcnTooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="lg" className="h-12 border-primary/10 hover:bg-primary/5 font-bold text-muted-foreground" onClick={handleSync}>
-                      <RefreshCcw className="mr-2 h-4 w-4" /> Sincronizar
+                    <Button variant="ghost" size="lg" className="h-12 border-primary/10 hover:bg-primary/5 font-bold text-muted-foreground px-4" onClick={handleSync}>
+                      <RefreshCcw className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="font-bold">Reparar IDs de tareas dañados</TooltipContent>
@@ -229,7 +320,7 @@ export function Dashboard() {
         </header>
 
         {/* Métricas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="bg-gradient-to-br from-card to-primary/5 border-primary/10 shadow-sm">
             <CardHeader className="pb-2">
               <CardDescription className="font-bold uppercase tracking-wider text-xs">Historias Activas</CardDescription>
@@ -253,6 +344,24 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground font-medium">Asociadas a historias activas</p>
+            </CardContent>
+          </Card>
+
+          <Card className={`bg-gradient-to-br from-card to-orange-500/5 border-orange-500/10 shadow-sm`}>
+            <CardHeader className="pb-2">
+              <CardDescription className="font-bold uppercase tracking-wider text-xs text-orange-600">Precisión de Estimación</CardDescription>
+              <CardTitle className={`text-4xl font-black flex items-center justify-between ${deviationMetrics.accuracy < 70 ? 'text-orange-600' : 'text-foreground'}`}>
+                {deviationMetrics.accuracy}%
+                <PieChartIcon className="h-8 w-8 opacity-40 text-orange-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={`text-[10px] font-bold ${deviationMetrics.status === 'Excedido' ? 'border-red-500 text-red-500' : 'border-emerald-500 text-emerald-500'}`}>
+                    {deviationMetrics.status}
+                </Badge>
+                <p className="text-[10px] text-muted-foreground font-medium">Global vs Jira Scope</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -398,15 +507,15 @@ export function Dashboard() {
         )}
 
         {/* Analíticas Gráficas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
 
           <Card className="border-border/50 shadow-sm bg-card">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg font-black flex items-center gap-2">
-                  <PieChartIcon className="h-5 w-5 text-primary" /> Distribución de Tareas
+                  <PieChartIcon className="h-5 w-5 text-primary" /> Distribución
                 </CardTitle>
-                <CardDescription>Tipos de tareas activas</CardDescription>
+                <CardDescription>Tipos de tareas</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -424,7 +533,7 @@ export function Dashboard() {
                         dataKey="value"
                       >
                         {pieData.map((_, index) => (
-                          // eslint-disable-next-line @typescript-eslint/no-deprecated
+                          /* eslint-disable-next-line @typescript-eslint/no-deprecated */
                           <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -437,7 +546,7 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm font-medium border border-dashed border-border/50 rounded-lg">
-                  No hay tareas suficientes
+                  Sin tareas suficientes
                 </div>
               )}
             </CardContent>
@@ -447,30 +556,94 @@ export function Dashboard() {
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg font-black flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-blue-500" /> Tiempos Invertidos
+                  <TrendingDown className="h-5 w-5 text-orange-500" /> Eficiencia
                 </CardTitle>
-                <CardDescription>Horas gastadas vs. estimadas</CardDescription>
+                <CardDescription>Real vs Est por Capa</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
-              {barData.length > 0 ? (
+              {deviationMetrics.typeData.length > 0 ? (
                 <div className="h-[250px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={barData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                    <BarChart data={deviationMetrics.typeData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tick={{ fontWeight: 800 }} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} unit="h" />
                       <RechartsTooltip
                         cursor={{ fill: 'var(--muted)' }}
-                        contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}
+                        contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                       />
-                      <Bar dataKey="Invertido" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                      <Bar dataKey="Estimado" fill="#e2e8f0" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                      <Bar dataKey="Real" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                      <Bar dataKey="Estimado" fill="#e2e8f0" radius={[6, 6, 0, 0]} maxBarSize={50} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
                 <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm font-medium border border-dashed border-border/50 rounded-lg">
-                  No hay historias activas
+                  Sin datos suficientes
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm bg-card">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-black flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-purple-500" /> Carga Individual
+                </CardTitle>
+                <CardDescription>Top 8 programadores</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {teamLoadData.length > 0 ? (
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={teamLoadData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} tick={{ fontWeight: 800 }} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                      <RechartsTooltip
+                        cursor={{ fill: 'var(--muted)' }}
+                        contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar dataKey="Tareas" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm font-medium border border-dashed border-border/50 rounded-lg">
+                  Sin asignaciones
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm bg-card">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-black flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-pink-500" /> Carga por Grupo
+                </CardTitle>
+                <CardDescription>Frontend vs Backend vs QA</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {specialtyLoadData.length > 0 ? (
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={specialtyLoadData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tick={{ fontWeight: 800 }} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                      <RechartsTooltip
+                        cursor={{ fill: 'var(--muted)' }}
+                        contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar dataKey="Tareas" fill="#ec4899" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm font-medium border border-dashed border-border/50 rounded-lg">
+                  Sin datos de grupos
                 </div>
               )}
             </CardContent>
@@ -559,7 +732,7 @@ export function Dashboard() {
                           return (
                             <div className="bg-card border border-border p-3 rounded-2xl shadow-2xl">
                               <p className="text-[9px] font-black text-primary uppercase mb-1">{data.fullDate}</p>
-                              <p className="text-lg font-black">{data.hours}h <span className="text-[10px] text-muted-foreground font-bold">trabajadas</span></p>
+                              <p className="text-lg font-black">{String(data.hours)}h <span className="text-[10px] text-muted-foreground font-bold">trabajadas</span></p>
                             </div>
                           )
                         }

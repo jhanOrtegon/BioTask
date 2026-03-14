@@ -6,6 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useStoriesStore } from '@/features/stories/store'
 import { useTasksStore } from '@/features/tasks/store'
 import { useSprintsStore } from '@/features/sprints/store'
+import { useTeamStore } from '@/features/team/store'
 import type { TrackedTask, TimeLog } from '@/features/stories/types'
 import { Button } from '@/shared/ui/button'
 import { Badge } from '@/shared/ui/badge'
@@ -37,10 +38,12 @@ import { Textarea } from '@/shared/ui/textarea'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { AuditTimeline } from '@/features/stories/ui/AuditTimeline'
-import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Eye, GripVertical } from 'lucide-react'
+import { Plus, Archive, Edit, Clock, BookOpen, History, Play, Pause, Square, CheckCircle2, Eye, GripVertical, FileDown, Layers3, Copy, CopyCheck, Tag, Users, AlertTriangle, AlertCircle, Info } from 'lucide-react'
+import { getTaskAlertStatus } from '@/shared/utils/task-utils'
 import { DynamicTaskEditor } from '@/features/tasks/ui/DynamicTaskEditor'
 import type { TaskDraft } from '@/features/tasks/types'
 import { toast } from 'sonner'
+import { cn } from '@/shared/utils'
 import {
   flexRender,
   getCoreRowModel,
@@ -93,9 +96,11 @@ export function StoryDetailPage() {
     stopTaskTimer,
     resetTaskTimer,
     updateTask,
-    updateStory
+    updateStory,
+    addTaskToStory
   } = useStoriesStore()
   const { startNewTask } = useTasksStore()
+  const { getMemberById } = useTeamStore()
 
   const { sprints } = useSprintsStore()
   const story = useMemo(() => stories.find(s => s.id === id), [stories, id])
@@ -123,6 +128,87 @@ export function StoryDetailPage() {
   const [editStoryDialog, setEditStoryDialog] = useState(false)
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
   const [showErrorDialog, setShowErrorDialog] = useState<{ title: string; desc: string } | null>(null)
+  
+  // New features states
+  const [showExportDialog, setShowExportDialog] = useState(false)
+  const [showBulkDialog, setShowBulkDialog] = useState(false)
+  const [bulkText, setBulkText] = useState('')
+  const [isCopied, setIsCopied] = useState(false)
+
+  const activeTasks = useMemo(() => (story?.tasks.filter(t => t.status !== 'archived') || []).sort((a, b) => (a.position || 0) - (b.position || 0)), [story?.tasks])
+
+  const generatedMarkdown = useMemo(() => {
+    if (!story) return ''
+    let md = `# [${story.code}] ${story.title}\n\n`
+    md += `**Módulo:** ${story.module}\n`
+    md += `**Estado:** ${story.status === 'active' ? '🟢 Activa' : '⚪ Archivada'}\n`
+    if (story.description) md += `\n## Descripción\n${story.description}\n`
+    
+    md += `\n---\n\n# 📋 Desglose de Tareas Técnicas\n\n`
+    
+    activeTasks.forEach(task => {
+      md += `## [${task.code || 'TASK'}] ${task.title}\n`
+      md += `**Tipo:** ${task.type} | **Estado:** ${task.status} | **Estimado:** ${String(task.estimatedHours || 0)}h\n\n`
+      
+      if (task.data.objective) {
+        md += `### 🎯 Objetivo\n${task.data.objective}\n\n`
+      }
+      
+      if (task.data.services.length > 0) {
+        md += `### 🔌 Servicios / API\n`
+        task.data.services.forEach(s => {
+          md += `- **${s.name}** (${s.method || 'GET'}): ${s.url}\n`
+        })
+        md += `\n`
+      }
+
+      if (task.data.requirements.length > 0) {
+        md += `### 📝 Requerimientos\n`
+        task.data.requirements.forEach(r => { md += `- ${r}\n` })
+        md += `\n`
+      }
+
+      if (task.data.validations.length > 0) {
+        md += `### 🧪 Validaciones\n`
+        task.data.validations.forEach(v => { md += `- [ ] ${v}\n` })
+        md += `\n`
+      }
+      
+      md += `---\n\n`
+    })
+
+    return md
+  }, [story, activeTasks])
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedMarkdown)
+      setIsCopied(true)
+      toast.success('Copiado al portapapeles', { description: 'Ahora puedes pegarlo en Jira o Confluence.' })
+      setTimeout(() => { setIsCopied(false) }, 2000)
+    } catch {
+      toast.error('Error al copiar')
+    }
+  }
+
+  const handleBulkCreateRecords = () => {
+    if (!story || !bulkText.trim()) return
+    const lines = bulkText.split('\n').filter(l => l.trim() !== '')
+    
+    lines.forEach(line => {
+      addTaskToStory(story.id, {
+        title: line.trim(),
+        type: 'feature',
+        data: { objective: '', services: [], requirements: [], validations: [] }
+      })
+    })
+    
+    toast.success(`${String(lines.length)} tareas creadas correctamente`, {
+      description: 'Ahora puedes editarlas individualmente.'
+    })
+    setBulkText('')
+    setShowBulkDialog(false)
+  }
 
   const form = useForm<StoryUpdateValues>({
     resolver: zodResolver(storyUpdateSchema),
@@ -164,8 +250,6 @@ export function StoryDetailPage() {
     toast.success('Historia actualizada')
   }
 
-  const activeTasks = useMemo(() => (story?.tasks.filter(t => t.status !== 'archived') || []).sort((a, b) => (a.position || 0) - (b.position || 0)), [story?.tasks])
-
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result
     if (!destination || !story) return
@@ -195,7 +279,6 @@ export function StoryDetailPage() {
     setArchiveDialog(null)
   }
 
-
   const columns = useMemo<ColumnDef<TrackedTask>[]>(() => [
     {
       id: 'drag-handle',
@@ -224,6 +307,31 @@ export function StoryDetailPage() {
           </p>
         </div>
       ),
+    },
+    {
+      accessorKey: 'assignedTo',
+      header: 'Responsable',
+      cell: ({ row }) => {
+        const member = row.original.assignedTo ? getMemberById(row.original.assignedTo) : null
+        return (
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center border border-border/50">
+              {member ? (
+                <span className="text-[10px] font-black text-primary">
+                  {member.name.charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <Users className="h-3 w-3 text-muted-foreground/40" />
+              )}
+            </div>
+            {member && (
+              <span className="text-[11px] font-bold text-foreground/80 truncate max-w-[80px]">
+                {member.name.split(' ')[0]}
+              </span>
+            )}
+          </div>
+        )
+      }
     },
     {
       accessorKey: 'type',
@@ -291,9 +399,41 @@ export function StoryDetailPage() {
             <div className="bg-muted/50 px-2 py-1 flex items-center justify-center rounded border border-border/50 text-xs text-foreground font-medium">
               <LiveTimer timeSpent={task.timeSpent || 0} timeLogs={task.timeLogs} />
               <span className="text-[10px] text-muted-foreground ml-1.5 font-bold">
-                / {task.estimatedHours || 0}h
+                / {String(task.estimatedHours || 0)}h
               </span>
             </div>
+            {/* Task Alerts */}
+            {getTaskAlertStatus(task).length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex -space-x-1">
+                      {getTaskAlertStatus(task).map((alert, i) => (
+                        <div key={i} className={cn(
+                          "h-5 w-5 rounded-full flex items-center justify-center border-2 border-background",
+                          alert.type === 'error' ? 'bg-red-500 text-white' : 
+                          alert.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white'
+                        )}>
+                          {alert.type === 'error' ? <AlertCircle className="h-2.5 w-2.5" /> : 
+                           alert.type === 'warning' ? <AlertTriangle className="h-2.5 w-2.5" /> : <Info className="h-2.5 w-2.5" />}
+                        </div>
+                      ))}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="p-2 flex flex-col gap-1 max-w-[200px]">
+                    {getTaskAlertStatus(task).map((alert, i) => (
+                      <div key={i} className="flex gap-2 items-start leading-tight">
+                        <div className={cn("h-1.5 w-1.5 rounded-full mt-1 shrink-0", 
+                          alert.type === 'error' ? 'bg-red-500' : 
+                          alert.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+                        )} />
+                        <span className="text-[10px] font-bold">{alert.message}</span>
+                      </div>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {task.status !== 'completed' && task.status !== 'archived' && !isReadOnly && (
               <div className="flex bg-muted/30 rounded-md border border-border/50">
                 <TooltipProvider>
@@ -361,7 +501,9 @@ export function StoryDetailPage() {
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-primary transition-colors"
-                    onClick={() => { setResetTimerDialog({ taskId: task.id, title: task.title }) }}
+                    onClick={() => {
+                      setResetTimerDialog({ taskId: task.id, title: task.title })
+                    }}
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                   </Button>
@@ -455,7 +597,7 @@ export function StoryDetailPage() {
         )
       },
     },
-  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, resetTaskTimer, updateTask, triggerConfetti, navigate, findStoryIdForTask, isReadOnly])
+  ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, updateTask, triggerConfetti, navigate, findStoryIdForTask, isReadOnly, getMemberById])
 
   const table = useReactTable({
     data: activeTasks,
@@ -541,17 +683,38 @@ export function StoryDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-xs font-bold rounded-xl border-dashed hover:border-primary transition-all"
+              onClick={() => setShowExportDialog(true)}
+            >
+              <FileDown className="h-3.5 w-3.5" /> Export Tech Spec
+            </Button>
+
             {!isReadOnly && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-xs font-bold rounded-xl"
-                onClick={openEditStory}
-              >
-                <Edit className="h-3.5 w-3.5" /> Editar Historia
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-xs font-bold rounded-xl border-dashed hover:border-blue-500 transition-all"
+                  onClick={() => setShowBulkDialog(true)}
+                >
+                  <Layers3 className="h-3.5 w-3.5" /> Creación Masiva
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-xs font-bold rounded-xl"
+                  onClick={openEditStory}
+                >
+                  <Edit className="h-3.5 w-3.5" /> Editar Historia
+                </Button>
+              </>
             )}
+
             <Button
               variant="outline"
               size="sm"
@@ -560,6 +723,7 @@ export function StoryDetailPage() {
             >
               <History className="h-3.5 w-3.5" /> {showTimeline ? 'Ocultar' : 'Ver'} Historial
             </Button>
+
             {!isReadOnly && (
               <Button
                 className="gap-2 font-bold shadow-lg shadow-primary/25 active:scale-95 transition-all rounded-xl"
@@ -648,7 +812,7 @@ export function StoryDetailPage() {
         </div>
       </div>
 
-      {/* Task Details Dialog */}
+      {/* Task Details Dialog (View Only) */}
       <Dialog open={!!viewTask} onOpenChange={(open: boolean) => { if (!open) setViewTask(null) }}>
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto border-border bg-popover shadow-2xl rounded-2xl p-0">
           <div className="p-8">
@@ -657,7 +821,75 @@ export function StoryDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Archive Task Comment Dialog */}
+      {/* Export Tech Spec Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="max-w-3xl border-border bg-popover shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileDown className="h-5 w-5 text-primary" /> Technical Specification (Markdown)
+            </DialogTitle>
+            <DialogDescription>
+              Copia este contenido para pegarlo en Jira, Confluence o Notion.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative group">
+              <Textarea 
+                readOnly 
+                value={generatedMarkdown} 
+                className="min-h-[400px] font-mono text-[12px] bg-muted/30 p-4 rounded-xl resize-none border-border/50"
+              />
+              <Button 
+                size="sm" 
+                className="absolute top-3 right-3 gap-2 font-bold shadow-xl"
+                onClick={copyToClipboard}
+              >
+                {isCopied ? <CopyCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {isCopied ? '¡Copiado!' : 'Copiar Markdown'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Create Tasks Dialog */}
+      <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
+        <DialogContent className="max-w-lg border-border bg-popover shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers3 className="h-5 w-5 text-blue-500" /> Creación Masiva
+            </DialogTitle>
+            <DialogDescription>
+              Ingresa un título de tarea por línea. Se crearán como borradores.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Tag className="h-3.5 w-3.5 text-muted-foreground mb-1" />
+              <Textarea 
+                placeholder="Crear servicio de auth\nDiseñar mockup\nImplementar RLS..."
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                className="min-h-[200px] bg-muted/30 rounded-xl resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button variant="outline" className="rounded-xl" onClick={() => setShowBulkDialog(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700" 
+                onClick={handleBulkCreateRecords}
+                disabled={!bulkText.trim()}
+              >
+                Crear Tareas
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Existing Dialogs (Archive, Reset, Error) */}
       <CommentDialog
         open={!!archiveDialog}
         onOpenChange={(open) => { if (!open) setArchiveDialog(null) }}
@@ -679,7 +911,7 @@ export function StoryDetailPage() {
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={e => { e.preventDefault(); void handleUpdateClick(); }} className="space-y-4">
+              <form onSubmit={(e) => { e.preventDefault(); void handleUpdateClick(); }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -764,7 +996,7 @@ export function StoryDetailPage() {
         open={!!resetTimerDialog}
         onOpenChange={(open) => { if (!open) setResetTimerDialog(null) }}
         onConfirm={() => {
-          if (resetTimerDialog) {
+          if (resetTimerDialog && story) {
             resetTaskTimer(story.id, resetTimerDialog.taskId)
             toast.success('Contador reiniciado')
             setResetTimerDialog(null)

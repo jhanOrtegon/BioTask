@@ -4,16 +4,20 @@ import type { DropResult } from '@hello-pangea/dnd'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useStoriesStore } from '@/features/stories/store'
 import { Badge } from '@/shared/ui/badge'
-import { KanbanSquare, BookOpen, CheckSquare, Calendar, Plus, RotateCcw, Play, Pause, Square, ListChecks, Search } from 'lucide-react'
+import { KanbanSquare, Calendar, Plus, Play, Pause, Square, ListChecks, Search, Filter, AlertCircle, Info, Users } from 'lucide-react'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
 import { LiveTimer } from '@/features/tasks/ui/LiveTimer'
 import { useNavigate } from 'react-router-dom'
 import { useTasksStore } from '@/features/tasks/store'
 import { useSprintsStore } from '@/features/sprints/store'
+import { useTeamStore } from '@/features/team/store'
 import { toast } from 'sonner'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip'
+import { getTaskAlertStatus } from '@/shared/utils/task-utils'
+import { cn } from '@/shared/utils'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { useQueryState } from 'nuqs'
 
 import {
   Select,
@@ -22,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
-import { Filter } from 'lucide-react'
 
 type ColumnType = 'pending' | 'in_progress' | 'completed'
 
@@ -34,13 +37,17 @@ const COLUMNS: { id: ColumnType, title: string, color: string }[] = [
 
 export function BoardPage() {
   const navigate = useNavigate()
-  const { stories, updateTask, startTaskTimer, pauseTaskTimer, stopTaskTimer, resetTaskTimer, reorderTask } = useStoriesStore()
+  const { stories, updateTask, startTaskTimer, pauseTaskTimer, stopTaskTimer, resetTaskTimer, reorderTask, syncTasksIds } = useStoriesStore()
   const { sprints } = useSprintsStore()
   const { startNewTask } = useTasksStore()
+  const { getMemberById } = useTeamStore()
 
   const [resetTimerDialog, setResetTimerDialog] = useState<{ storyId: string; taskId: string; title: string } | null>(null)
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null)
+  
+  // URL States with nuqs
+  const [selectedSprintId, setSelectedSprintId] = useQueryState('sprint', { defaultValue: '' })
+  const [selectedStoryId, setSelectedStoryId] = useQueryState('story', { defaultValue: 'all' })
+  const [searchQuery, setSearchQuery] = useQueryState('q', { defaultValue: '' })
 
   const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
   const currentSprint = useMemo(() => {
@@ -48,9 +55,6 @@ export function BoardPage() {
     return activeSprint
   }, [sprints, selectedSprintId, activeSprint])
 
-  const [selectedStoryId, setSelectedStoryId] = useState<string>('all')
-
-  const { syncTasksIds } = useStoriesStore()
   useEffect(() => {
     syncTasksIds()
   }, [syncTasksIds])
@@ -101,7 +105,6 @@ export function BoardPage() {
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result
     
-    // Dropped outside the list or no movement
     if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) {
       return
     }
@@ -116,10 +119,8 @@ export function BoardPage() {
       'completed': 'completed'
     }
 
-    // Get tasks in the destination column (excluding the task being moved if it's already there)
     const destTasks = allTasks.filter(t => t.status === newStatus && t.id !== draggableId)
     
-    // Calculate new position
     let newPosition: number
     if (destTasks.length === 0) {
       newPosition = 1000
@@ -138,15 +139,12 @@ export function BoardPage() {
       reorderTask(taskToMove.storyId, taskToMove.id, newPosition)
       triggerConfetti()
     } else {
-      // Automate timer stop/pause if moved to pending
       if (newStatus === 'pending') {
         pauseTaskTimer(taskToMove.storyId, taskToMove.id)
       } else if (newStatus === 'in_progress' && taskToMove.status !== 'in_progress') {
-        // Automate timer start if moved to in_progress
         startTaskTimer(taskToMove.storyId, taskToMove.id)
       }
 
-      // Update both status and position
       updateTask(
         taskToMove.storyId, 
         taskToMove.id, 
@@ -154,7 +152,7 @@ export function BoardPage() {
           status: statusTypeMap[newStatus],
           position: newPosition
         }, 
-        `Movido a ${COLUMNS.find(c => c.id === newStatus)?.title || newStatus} en posición ${String(destination.index)}`
+        `Movido a ${COLUMNS.find(c => c.id === newStatus)?.title || newStatus}`
       )
     }
   }
@@ -165,116 +163,106 @@ export function BoardPage() {
 
   return (
     <div className="h-full flex flex-col p-8 overflow-hidden bg-background">
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex items-center justify-between shrink-0 mb-4">
         <Breadcrumbs items={[
           { label: 'Tablero Ágil', href: '/board' },
           { label: 'Power Planner' }
         ]} />
       </div>
-      <header className="shrink-0 space-y-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid place-items-center h-10 w-10 rounded-xl bg-primary/10 border border-primary/20">
-              <KanbanSquare className="h-5 w-5 text-primary" />
+
+      <header className="shrink-0 space-y-6 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="grid place-items-center h-12 w-12 rounded-2xl bg-primary/10 border border-primary/20 shadow-inner">
+              <KanbanSquare className="h-6 w-6 text-primary" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight text-foreground">Tablero Ágil</h1>
+                <h1 className="text-3xl font-black tracking-tight text-foreground">Tablero Ágil</h1>
                 {activeSprint && (
-                  <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px] font-black uppercase tracking-tighter animate-in zoom-in duration-500">
-                    Sprint: {activeSprint.name}
+                  <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest px-2 py-0.5 animate-pulse">
+                    Sprint Activo: {activeSprint.name}
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">{activeSprint ? 'Mostrando tareas del sprint activo' : 'Gestiona tus tareas activas mediante Drag & Drop'}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                {activeSprint ? 'Gestionando el flujo de trabajo actual.' : 'Tablero optimizado para metodologías ágiles.'}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            {currentSprint && (
-              <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg border border-border/50">
-                <div className="flex items-center gap-2 px-2 text-muted-foreground border-r border-border/50">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Sprint:</span>
-                </div>
-                <Select value={selectedSprintId || activeSprint?.id || ''} onValueChange={setSelectedSprintId}>
-                  <SelectTrigger className="h-8 w-[160px] bg-background border-none shadow-none text-xs font-bold">
-                    <SelectValue placeholder="Seleccionar Sprint" />
+
+          <div className="flex flex-wrap items-center gap-3">
+             <div className="flex items-center gap-2 bg-secondary/30 p-1.5 rounded-2xl border border-primary/5">
+                <Select value={selectedSprintId || (activeSprint?.id || '')} onValueChange={(v) => { void setSelectedSprintId(v) }}>
+                  <SelectTrigger className="h-10 w-[180px] bg-background border-none shadow-sm rounded-xl text-xs font-bold">
+                    <Calendar className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Sprint" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {sprints.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(s => (
+                  <SelectContent className="rounded-xl">
+                    {sprints.map(s => (
                       <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
-                        {s.name} {s.status === 'completed' ? '(F)' : ''}
+                        {s.status === 'active' && '⭐ '}{s.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                <div className="flex items-center gap-2 px-2 text-muted-foreground border-l border-border/50">
-                  <Filter className="h-3.5 w-3.5" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Historia:</span>
-                </div>
-                <Select value={selectedStoryId} onValueChange={setSelectedStoryId}>
-                  <SelectTrigger className="h-8 w-[160px] bg-background border-none shadow-none text-xs font-bold">
-                    <SelectValue placeholder="Todas" />
+                <Select value={selectedStoryId} onValueChange={(v) => { void setSelectedStoryId(v) }}>
+                  <SelectTrigger className="h-10 w-[180px] bg-background border-none shadow-sm rounded-xl text-xs font-bold">
+                    <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Historia" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="text-xs font-bold">Todas las historias</SelectItem>
-                    {sprintStories.map(story => (
-                      <SelectItem key={story.id} value={story.id} className="text-xs font-bold">
-                        {story.code}
-                      </SelectItem>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all" className="text-xs font-bold">Todas las Historias</SelectItem>
+                    {sprintStories.map(s => (
+                      <SelectItem key={s.id} value={s.id} className="text-xs">{s.code}: {s.title}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
+             </div>
+
             {activeSprint && (
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="h-8 gap-2 text-xs font-bold border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+                className="h-10 px-4 gap-2 text-xs font-bold rounded-xl border-primary/10 bg-primary/5 text-primary hover:bg-primary/10 transition-all"
                 onClick={() => { void navigate('/planner') }}
               >
-                <ListChecks className="h-3.5 w-3.5" />
+                <ListChecks className="h-4 w-4" />
                 Planificador
               </Button>
             )}
-            <Badge variant="outline" className="font-mono text-xs font-bold py-1">
-              {allTasks.length} Tareas Activas
+
+            <Badge variant="outline" className="h-10 px-4 rounded-xl font-mono text-xs font-black border-dashed">
+              {allTasks.length} Tareas
             </Badge>
           </div>
         </div>
 
-        <div className="flex gap-4">
-          <div className="relative flex-1 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Buscar por tarea, historia o código (Jira)..." 
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value) }}
-              className="w-full bg-card/40 border border-border/50 rounded-2xl py-3 pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
-            />
-          </div>
+        <div className="relative group max-w-2xl">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Buscar por tarea, historia o código (Jira)..." 
+            value={searchQuery}
+            onChange={(e) => { void setSearchQuery(e.target.value || null) }}
+            className="w-full h-12 bg-card/50 border-border/50 rounded-2xl pl-12 pr-4 text-sm font-bold focus:ring-primary/20 transition-all"
+          />
         </div>
       </header>
 
       <DragDropContext onDragEnd={onDragEnd}>
         {!currentSprint ? (
-          <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/5 p-12 text-center animate-in fade-in zoom-in duration-500">
+          <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/5 p-12 text-center">
             <div className="h-20 w-20 rounded-2xl bg-primary/5 border border-primary/10 grid place-items-center mb-6">
               <Calendar className="h-10 w-10 text-primary/40" />
             </div>
-            <h2 className="text-xl font-black tracking-tight mb-2">No hay un sprint activo</h2>
-            <p className="text-muted-foreground max-w-[300px] mb-8">
-              Inicia un sprint desde la página de Sprints para empezar a gestionar tus tareas en el tablero ágil.
+            <h2 className="text-xl font-black mb-2">No hay un sprint seleccionado</h2>
+            <p className="text-muted-foreground max-w-[300px] mb-8 font-medium">
+              Inicia o selecciona un sprint para ver las tareas en el tablero.
             </p>
-            <button 
-              onClick={() => void navigate('/sprints')}
-              className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-black hover:opacity-90 transition-all shadow-lg shadow-primary/20"
-            >
-              Ir a Sprints
-            </button>
+            <Button onClick={() => void navigate('/sprints')} className="rounded-xl px-8 font-black">
+              Gestión de Sprints
+            </Button>
           </div>
         ) : (
           <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden min-h-0">
@@ -282,10 +270,10 @@ export function BoardPage() {
             const tasksInColumn = getTasksByColumn(column.id)
 
             return (
-              <div key={column.id} className="flex flex-col h-full bg-muted/20 border border-border/50 rounded-2xl overflow-hidden">
-                <div className={`shrink-0 px-4 py-3 border-b border-border/50 flex items-center justify-between ${column.color}`}>
-                  <h3 className="font-black text-sm uppercase tracking-wider">{column.title}</h3>
-                  <Badge variant="secondary" className="font-mono text-xs shadow-sm bg-background border-none">
+              <div key={column.id} className="flex flex-col h-full bg-secondary/10 border border-border/40 rounded-3xl overflow-hidden shadow-sm">
+                <div className={cn("shrink-0 px-6 py-4 border-b border-border/40 flex items-center justify-between", column.color)}>
+                  <h3 className="font-black text-xs uppercase tracking-[0.2em]">{column.title}</h3>
+                  <Badge variant="secondary" className="font-black text-[10px] bg-background/50 border-none px-2">
                     {tasksInColumn.length}
                   </Badge>
                 </div>
@@ -295,9 +283,12 @@ export function BoardPage() {
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className={`flex-1 p-4 overflow-y-auto transition-colors ${snapshot.isDraggingOver ? 'bg-muted/40' : ''}`}
+                      className={cn(
+                        "flex-1 p-5 overflow-y-auto transition-all duration-200",
+                        snapshot.isDraggingOver ? "bg-primary/5" : ""
+                      )}
                     >
-                      <div className="flex flex-col gap-3 min-h-[50px]">
+                      <div className="flex flex-col gap-4 min-h-[50px]">
                          {tasksInColumn.map((task, index) => (
                           <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={currentSprint.status === 'completed'}>
                             {(provided, snapshot) => (
@@ -305,178 +296,110 @@ export function BoardPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`
-                                  group relative bg-card border border-border hover:border-border/80 shadow-sm rounded-xl p-4 cursor-grab active:cursor-grabbing transition-all
-                                  ${snapshot.isDragging ? 'shadow-lg ring-2 ring-primary/50 rotate-2' : ''}
-                                `}
+                                className={cn(
+                                  "group relative bg-card border border-border/60 hover:border-primary/40 shadow-sm rounded-[1.25rem] p-5 cursor-grab active:cursor-grabbing transition-all hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1",
+                                  snapshot.isDragging ? "shadow-2xl ring-2 ring-primary rotate-1 z-50 bg-card" : ""
+                                )}
                                 onClick={(e) => {
                                   if (e.defaultPrevented || snapshot.isDragging) return
-                                  // Deep recovery: search all stories if storyId is missing
-                                  const sId = (task as { storyId?: string }).storyId || findStoryIdForTask(task.id)
+                                  const sId = task.storyId || findStoryIdForTask(task.id)
                                   if (sId && task.id) {
                                     void navigate(`/editor/${sId}/${task.id}`)
-                                  } else {
-                                    console.error("Missing IDs on Kanban Card after deep recovery:", { storyId: sId, taskId: task.id, task })
-                                    toast.error("Error: ID de tarea o historia no encontrado")
                                   }
                                 }}
                               >
-                                <div className="space-y-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold uppercase tracking-widest text-muted-foreground border-border/50">
-                                      {task.storyCode}
-                                    </Badge>
-                                    {task.code && (
-                                      <span className="font-mono text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                                        {task.code}
-                                      </span>
-                                    )}
+                                <div className="space-y-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex flex-wrap gap-2">
+                                      <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest px-1.5 h-5 bg-muted/50 border-none">
+                                        {task.storyCode}
+                                      </Badge>
+                                      {task.code && (
+                                        <span className="font-mono text-[10px] font-black text-primary bg-primary/10 px-1.5 h-5 rounded flex items-center">
+                                          {task.code}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {getTaskAlertStatus(task).length > 0 && 
+                                        getTaskAlertStatus(task).map((alert, i) => (
+                                          <div key={i} className={cn(
+                                            "h-5 w-5 rounded-full flex items-center justify-center text-white",
+                                            alert.type === 'error' ? 'bg-red-500' : 
+                                            alert.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+                                          )}>
+                                            {alert.type === 'error' ? <AlertCircle className="h-3 w-3" /> : <Info className="h-3 w-3" />}
+                                          </div>
+                                        ))
+                                      }
+                                    </div>
                                   </div>
                                   
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {task.priority && (
-                                      <span title={`Prioridad: ${task.priority}`} className="text-xs">
-                                        {task.priority === 'urgent' ? '🔴' : task.priority === 'high' ? '🟠' : task.priority === 'medium' ? '🔵' : '🟡'}
-                                      </span>
-                                    )}
-                                    <h4 className="text-sm font-semibold leading-tight line-clamp-2">
+                                  <div className="space-y-1.5">
+                                    <h4 className="text-sm font-bold leading-tight line-clamp-2 text-foreground group-hover:text-primary transition-colors">
                                       {task.title}
                                     </h4>
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">
+                                      <span className={cn(
+                                        "px-1.5 py-0.5 rounded-md",
+                                        task.priority === 'urgent' ? "bg-red-500/10 text-red-500" :
+                                        task.priority === 'high' ? "bg-orange-500/10 text-orange-500" :
+                                        "bg-secondary text-muted-foreground"
+                                      )}>
+                                        {task.priority || 'Normal'}
+                                      </span>
+                                      <span>•</span>
+                                      <span>{task.type}</span>
+                                    </div>
                                   </div>
 
-                                  {((task.checklists && task.checklists.length > 0) || task.dueDate) && (
-                                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-medium">
-                                      {task.checklists && task.checklists.length > 0 && (
-                                        <div className="flex items-center gap-1 bg-muted/30 px-1.5 py-0.5 rounded">
-                                          <CheckSquare className="h-3 w-3" />
-                                          <span>{task.checklists.filter((c: { completed: boolean }) => c.completed).length}/{task.checklists.length}</span>
-                                        </div>
-                                      )}
-                                      {task.dueDate && (
-                                        <div className="flex items-center gap-1">
-                                          <Calendar className="h-3 w-3" />
-                                          <span>{new Date(task.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</span>
+                                  <div className="pt-4 border-t border-border/40 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <LiveTimer timeSpent={task.timeSpent || 0} timeLogs={task.timeLogs || []} className="text-[11px] font-black text-primary" showIcon />
+                                      {task.assignedTo && (
+                                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-[10px] font-black text-primary overflow-hidden shadow-sm">
+                                          {getMemberById(task.assignedTo)?.avatarUrl ? (
+                                            <img src={getMemberById(task.assignedTo)?.avatarUrl} alt="" className="h-full w-full object-cover" />
+                                          ) : (
+                                            getMemberById(task.assignedTo)?.name.charAt(0) || <Users className="h-3.5 w-3.5" />
+                                          )}
                                         </div>
                                       )}
                                     </div>
-                                  )}
-                                  
-                                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                                      <div className="flex items-center gap-3">
-                                        <Badge variant="secondary" className="font-black text-[10px] h-6">#{String(index + 1)}</Badge>
-                                        <Badge variant="secondary" className="text-[9px] px-1 py-0 shadow-none font-bold bg-muted/50 text-muted-foreground">
-                                          {task.type}
-                                        </Badge>
-                                      {task.timeSpent !== undefined ? (
-                                        <div className="flex items-center gap-2">
-                                          <div className="flex items-center text-muted-foreground group-hover:text-primary transition-colors">
-                                            <LiveTimer showIcon={true} timeSpent={task.timeSpent} timeLogs={task.timeLogs} className="text-[10px]" />
-                                            {task.estimatedHours ? <span className="text-[9px] text-muted-foreground ml-1 font-bold">/ {task.estimatedHours}h</span> : null}
-                                          </div>
-                                          
-                                          <div className="flex items-center gap-1 ml-1">
-                                            {/* Timer Controls */}
-                                            {task.status !== 'completed' && currentSprint.status !== 'completed' && (
-                                              <>
-                                                {task.timeLogs?.some(l => !l.endedAt) ? (
-                                                  <TooltipProvider>
-                                                    <Tooltip>
-                                                      <TooltipTrigger asChild>
-                                                        <button 
-                                                          className="text-amber-500 hover:bg-amber-500/10 p-1 rounded-md transition-colors"
-                                                          onClick={(e) => {
-                                                            e.preventDefault()
-                                                            e.stopPropagation()
-                                                            pauseTaskTimer(task.storyId, task.id)
-                                                          }}
-                                                        >
-                                                          <Pause className="h-3 w-3 fill-current" />
-                                                        </button>
-                                                      </TooltipTrigger>
-                                                      <TooltipContent className="font-bold">Pausar tiempo</TooltipContent>
-                                                    </Tooltip>
-                                                  </TooltipProvider>
-                                                ) : (
-                                                  <TooltipProvider>
-                                                    <Tooltip>
-                                                      <TooltipTrigger asChild>
-                                                        <button 
-                                                          className="text-emerald-500 hover:bg-emerald-500/10 p-1 rounded-md transition-colors"
-                                                          onClick={(e) => {
-                                                            e.preventDefault()
-                                                            e.stopPropagation()
-                                                            startTaskTimer(task.storyId, task.id)
-                                                          }}
-                                                        >
-                                                          <Play className="h-3 w-3 fill-current" />
-                                                        </button>
-                                                      </TooltipTrigger>
-                                                      <TooltipContent className="font-bold">Iniciar tiempo</TooltipContent>
-                                                    </Tooltip>
-                                                  </TooltipProvider>
-                                                )}
 
-                                                <TooltipProvider>
-                                                  <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                      <button 
-                                                        className="text-destructive hover:bg-destructive/10 p-1 rounded-md transition-colors"
-                                                        onClick={(e) => {
-                                                          e.preventDefault()
-                                                          e.stopPropagation()
-                                                          stopTaskTimer(task.storyId, task.id)
-                                                          triggerConfetti()
-                                                        }}
-                                                      >
-                                                        <Square className="h-3 w-3 fill-current" />
-                                                      </button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent className="font-bold">Finalizar tarea</TooltipContent>
-                                                  </Tooltip>
-                                                </TooltipProvider>
-                                              </>
-                                            )}
-
-                                            {(task.timeSpent ?? 0) > 0 && currentSprint.status !== 'completed' && (
-                                              <TooltipProvider>
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <button 
-                                                      className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-md hover:bg-destructive/10"
-                                                      onClick={(e) => {
-                                                        e.preventDefault()
-                                                        e.stopPropagation()
-                                                        setResetTimerDialog({ storyId: task.storyId, taskId: task.id, title: task.title })
-                                                      }}
-                                                    >
-                                                      <RotateCcw className="h-3 w-3" />
-                                                    </button>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent className="font-bold">Reiniciar tiempo</TooltipContent>
-                                                </Tooltip>
-                                              </TooltipProvider>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div 
-                                            className="grid place-items-center h-6 w-6 rounded-md hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors cursor-pointer"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              void navigate(`/stories/${task.storyId}`)
-                                            }}
+                                    <div className="flex items-center gap-1.5">
+                                      {task.status !== 'completed' && currentSprint.status !== 'completed' && (
+                                        <>
+                                          {task.timeLogs?.some(l => !l.endedAt) ? (
+                                            <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-8 w-8 rounded-lg text-amber-500 hover:bg-amber-500/10"
+                                              onClick={(e) => { e.stopPropagation(); pauseTaskTimer(task.storyId, task.id) }}
+                                            >
+                                              <Pause className="h-4 w-4 fill-current" />
+                                            </Button>
+                                          ) : (
+                                            <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-8 w-8 rounded-lg text-emerald-500 hover:bg-emerald-500/10"
+                                              onClick={(e) => { e.stopPropagation(); startTaskTimer(task.storyId, task.id) }}
+                                            >
+                                              <Play className="h-4 w-4 fill-current" />
+                                            </Button>
+                                          )}
+                                          <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10"
+                                            onClick={(e) => { e.stopPropagation(); stopTaskTimer(task.storyId, task.id); triggerConfetti() }}
                                           >
-                                            <BookOpen className="h-3.5 w-3.5" />
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="font-bold">Ver historia completa</TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
+                                            <Square className="h-3.5 w-3.5 fill-current" />
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -487,15 +410,15 @@ export function BoardPage() {
                         
                         {column.id === 'pending' && currentSprint.status !== 'completed' && (
                           <button
-                            className="mt-2 w-full flex items-center gap-2 text-muted-foreground/40 hover:text-primary hover:bg-primary/5 border border-dashed border-border/40 hover:border-primary/30 rounded-xl p-3 text-xs font-semibold transition-all"
+                            className="mt-2 w-full flex items-center justify-center gap-2 text-muted-foreground/30 hover:text-primary hover:bg-primary/5 border-2 border-dashed border-border/30 hover:border-primary/20 rounded-2xl py-5 text-xs font-black transition-all group/btn"
                             onClick={() => {
                               const activeStory = stories.find(s => s.status === 'active')
                               startNewTask(undefined, activeStory?.id)
                               void navigate('/editor')
                             }}
                           >
-                            <Plus className="h-3.5 w-3.5" />
-                            Nueva tarea en el editor...
+                            <Plus className="h-4 w-4 transition-transform group-hover/btn:rotate-90" />
+                            TAREA RÁPIDA
                           </button>
                         )}
                       </div>
@@ -508,6 +431,7 @@ export function BoardPage() {
           </div>
         )}
       </DragDropContext>
+      
       <ConfirmDialog
         open={!!resetTimerDialog}
         onOpenChange={(open) => { if (!open) setResetTimerDialog(null) }}

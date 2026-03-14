@@ -43,6 +43,7 @@ interface StoriesState {
 
   // ── Helpers ──
   getStoryById: (id: string) => Story | undefined
+  setStories: (stories: Story[]) => void
 }
 
 function createAuditEntry(
@@ -446,6 +447,7 @@ export const useStoriesStore = create<StoriesState>()(
       }),
 
       getStoryById: (id) => get().stories.find(s => s.id === id),
+      setStories: (stories) => set({ stories }),
     }),
     {
       name: 'stories-storage',

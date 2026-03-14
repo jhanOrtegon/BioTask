@@ -21,6 +21,12 @@ export interface Template {
   hasServices: boolean;
   hasFunctionalRequirements: boolean;
   hasValidations: boolean;
+
+  // Campos obligatorios (Pro)
+  requiredObjective: boolean;
+  requiredServices: boolean;
+  requiredRequirements: boolean;
+  requiredValidations: boolean;
   
   // Metadata Pro previa (opcional mantener o refactorizar)
   serviceInfo?: string;

@@ -25,6 +25,7 @@ export interface ChecklistItem {
 export interface TrackedTask {
   id: string
   code?: string
+  techPrefix?: 'BE-' | 'FE-'
   storyId: string
   templateId?: string
   title: string
@@ -40,6 +41,7 @@ export interface TrackedTask {
   timeSpent?: number // In seconds
   estimatedHours?: number
   sprintId?: string
+  assignedTo?: string // TeamMember ID
   timeLogs?: TimeLog[]
   position: number // For manual reordering
   createdAt: string
@@ -55,6 +57,7 @@ export interface AuditEntry {
   targetTitle: string
   comment: string
   timestamp: string
+  performedBy?: string // TeamMember ID
 }
 
 // ── Historia (User Story de Jira) ──
