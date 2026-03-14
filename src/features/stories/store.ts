@@ -7,8 +7,8 @@ interface StoriesState {
   stories: Story[]
 
   // ── Story CRUD ──
-  addStory: (data: { code: string; title: string; module: string; description?: string }) => Story
-  updateStory: (id: string, data: Partial<Pick<Story, 'code' | 'title' | 'module' | 'description'>>, comment: string) => void
+  addStory: (data: { code: string; title: string; module: string; description?: string; epicId?: string }) => Story
+  updateStory: (id: string, data: Partial<Pick<Story, 'code' | 'title' | 'module' | 'description' | 'epicId'>>, comment: string) => void
   archiveStory: (id: string, comment: string) => void
   restoreStory: (id: string, comment: string) => void
   reorderStory: (storyId: string, newPosition: number) => void

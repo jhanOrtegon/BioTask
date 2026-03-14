@@ -32,6 +32,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "MENÚ",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+      { icon: Layers, label: "Épicas", path: "/epics" },
       { icon: BookOpen, label: "Historias", path: "/stories" },
       { icon: CalendarDays, label: "Sprints", path: "/sprints" },
       { icon: CheckSquare, label: "Tareas", path: "/tasks" },

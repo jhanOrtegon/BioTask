@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Command } from "cmdk"
 import { useNavigate } from "react-router-dom"
 import { useStoriesStore } from "@/features/stories/store"
 import { useTasksStore } from "@/features/tasks/store"
-import { Search, MapPin, Hash } from "lucide-react"
+import { 
+  MapPin, Hash, LayoutDashboard, Layers, 
+  Users, Plus, Sparkles,
+  Search as SearchIcon, Command as CommandIcon
+} from "lucide-react"
 import type { TaskDraft } from "@/features/tasks/types"
+import { Badge } from "@/shared/ui/badge"
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
@@ -27,73 +32,139 @@ export function CommandPalette() {
 
   const tasks = stories.flatMap(s => s.tasks.map(t => ({ ...t, storyCode: s.code, storyId: s.id })))
 
+  const runCommand = useCallback((command: () => void) => {
+    setOpen(false)
+    command()
+  }, [])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-background/50 backdrop-blur-sm" onClick={() => {setOpen(false)}}>
+    <div 
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-background/60 backdrop-blur-md animate-in fade-in duration-300" 
+      onClick={() => { setOpen(false) }}
+    >
       <Command
-        className="w-full max-w-2xl bg-card border border-border shadow-2xl rounded-xl overflow-hidden animate-in fade-in zoom-in-95"
-        onClick={(e: React.MouseEvent) => {e.stopPropagation()}}
+        className="w-full max-w-2xl bg-card/80 border border-primary/20 shadow-[0_0_50px_-12px_rgba(var(--primary),0.3)] rounded-3xl overflow-hidden animate-in slide-in-from-top-4 duration-500 backdrop-blur-2xl"
+        onClick={(e: React.MouseEvent) => { e.stopPropagation() }}
         loop
       >
-        <div className="flex items-center border-b border-border px-4 py-3 gap-3 text-muted-foreground">
-           <Search className="h-5 w-5 shrink-0" />
+        <div className="flex items-center border-b border-primary/10 px-6 py-4 gap-3 bg-primary/5">
+           <SearchIcon className="h-5 w-5 shrink-0 text-primary" />
            <Command.Input
-             placeholder="Buscar historias, tareas, proyectos..."
-             className="w-full bg-transparent text-sm text-foreground font-semibold focus:outline-none placeholder:text-muted-foreground/60"
+             placeholder="Escribe un comando o busca algo..."
+             className="w-full bg-transparent text-base text-foreground font-bold focus:outline-none placeholder:text-muted-foreground/40"
              autoFocus
            />
-           <div className="flex items-center gap-1 shrink-0 bg-muted px-1.5 py-0.5 rounded text-[10px] font-mono border border-border/50">
-              <span className="opacity-50">ESC</span>
-           </div>
+           <Badge variant="outline" className="shrink-0 bg-background/50 border-primary/20 text-[10px] font-black uppercase tracking-widest px-2 py-1 gap-1.5">
+              <CommandIcon className="h-3 w-3" /> K
+           </Badge>
         </div>
-        <Command.List className="p-2 overflow-y-auto max-h-[400px]">
-          <Command.Empty className="py-6 text-center text-sm text-muted-foreground font-medium">
-             No se encontraron resultados para tu búsqueda.
+
+        <Command.List className="p-3 overflow-y-auto max-h-[450px] scrollbar-thin scrollbar-thumb-primary/20">
+          <Command.Empty className="py-12 text-center">
+             <Sparkles className="h-10 w-10 text-primary/20 mx-auto mb-4" />
+             <p className="text-sm text-muted-foreground font-medium">No se encontraron resultados en la red neural BioTask.</p>
           </Command.Empty>
 
-          <Command.Group heading="Historias Activas" className="px-2 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-             {stories.filter(s => s.status === 'active').map(story => (
+          <Command.Group heading="Navegación Rápida" className="px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">
+            <Command.Item
+              onSelect={() => { runCommand(() => { void navigate('/') }) }}
+              className="flex items-center px-4 py-3 rounded-2xl hover:bg-primary/5 text-sm font-bold text-foreground cursor-pointer transition-all aria-selected:bg-primary aria-selected:text-primary-foreground group mb-1"
+            >
+              <LayoutDashboard className="mr-3 h-4 w-4 shrink-0 opacity-50 group-aria-selected:opacity-100" />
+              Ver Dashboard General
+            </Command.Item>
+            <Command.Item
+              onSelect={() => { runCommand(() => { void navigate('/stories') }) }}
+              className="flex items-center px-4 py-3 rounded-2xl hover:bg-primary/5 text-sm font-bold text-foreground cursor-pointer transition-all aria-selected:bg-primary aria-selected:text-primary-foreground group mb-1"
+            >
+              <LayoutDashboard className="mr-3 h-4 w-4 shrink-0 opacity-50 group-aria-selected:opacity-100" />
+              Explorar Todas las Historias
+            </Command.Item>
+            <Command.Item
+              onSelect={() => { runCommand(() => { void navigate('/epics') }) }}
+              className="flex items-center px-4 py-3 rounded-2xl hover:bg-primary/5 text-sm font-bold text-foreground cursor-pointer transition-all aria-selected:bg-primary aria-selected:text-primary-foreground group mb-1"
+            >
+              <Layers className="mr-3 h-4 w-4 shrink-0 opacity-50 group-aria-selected:opacity-100" />
+              Hoja de Ruta de Épicas
+            </Command.Item>
+            <Command.Item
+              onSelect={() => { runCommand(() => { void navigate('/team') }) }}
+              className="flex items-center px-4 py-3 rounded-2xl hover:bg-primary/5 text-sm font-bold text-foreground cursor-pointer transition-all aria-selected:bg-primary aria-selected:text-primary-foreground group mb-1"
+            >
+              <Users className="mr-3 h-4 w-4 shrink-0 opacity-50 group-aria-selected:opacity-100" />
+              Gestión de Equipo
+            </Command.Item>
+          </Command.Group>
+
+          <Command.Group heading="Acciones Proactivas" className="px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 mt-4">
+            <Command.Item
+              onSelect={() => { runCommand(() => { setCurrentTask({} as TaskDraft); void navigate('/editor') }) }}
+              className="flex items-center px-4 py-3 rounded-2xl hover:bg-primary/5 text-sm font-bold text-foreground cursor-pointer transition-all aria-selected:bg-primary aria-selected:text-primary-foreground group mb-1"
+            >
+              <Plus className="mr-3 h-4 w-4 shrink-0 opacity-50 group-aria-selected:opacity-100" />
+              Lanzar Nueva Tarea
+            </Command.Item>
+          </Command.Group>
+
+          <Command.Group heading="Historias Activas" className="px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 mt-4">
+             {stories.filter(s => s.status === 'active').slice(0, 5).map(story => (
                <Command.Item
                  key={'story-' + story.id}
                  value={`${story.code} ${story.title} ${story.module}`}
-                 onSelect={() => {
-                   setOpen(false)
-                   void navigate(`/stories/${story.id}`)
-                 }}
-                 className="flex items-center px-3 py-3 rounded-lg hover:bg-muted text-sm text-foreground cursor-pointer transition-colors aria-selected:bg-primary/10 aria-selected:text-primary data-[selected=true]:bg-primary/10 data-[selected=true]:text-primary group"
+                 onSelect={() => { runCommand(() => { void navigate(`/stories/${story.id}`) }) }}
+                 className="flex items-center px-4 py-3 rounded-2xl hover:bg-primary/5 text-sm font-bold text-foreground cursor-pointer transition-all aria-selected:bg-primary aria-selected:text-primary-foreground group mb-1"
                >
-                 <MapPin className="mr-3 h-4 w-4 shrink-0 opacity-50 group-data-[selected=true]:opacity-100" />
-                 <span className="font-mono text-xs font-black opacity-40 mr-3 shrink-0">{story.code}</span>
-                 <span className="font-semibold truncate">{story.title}</span>
-                 <span className="ml-auto flex shrink-0 text-[10px] uppercase font-bold text-muted-foreground tracking-wider group-data-[selected=true]:text-primary/70">{story.module}</span>
+                 <MapPin className="mr-3 h-4 w-4 shrink-0 opacity-50 group-aria-selected:opacity-100" />
+                 <span className="font-mono text-[10px] font-black opacity-40 mr-3 shrink-0 uppercase tracking-tighter">{story.code}</span>
+                 <span className="truncate">{story.title}</span>
+                 <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <span className="text-[10px] uppercase font-black opacity-40 group-aria-selected:opacity-100">{story.module}</span>
+                 </div>
                </Command.Item>
              ))}
           </Command.Group>
 
-          <Command.Group heading="Tareas" className="px-2 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground mt-2">
-             {tasks.map(task => (
+          <Command.Group heading="Tareas Recientes" className="px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 mt-4">
+             {tasks.slice(0, 8).map(task => (
                <Command.Item
                  key={'task-' + task.id}
                  value={`${task.storyCode} ${task.code || ''} ${task.title}`}
-                 onSelect={() => {
-                   setOpen(false)
-                   setCurrentTask(task as unknown as TaskDraft)
-                   void navigate('/editor')
+                 onSelect={() => { 
+                   runCommand(() => { 
+                     setCurrentTask(task as unknown as TaskDraft)
+                     void navigate('/editor') 
+                   }) 
                  }}
-                 className="flex items-center px-3 py-3 rounded-lg hover:bg-muted text-sm text-foreground cursor-pointer transition-colors aria-selected:bg-primary/10 aria-selected:text-primary data-[selected=true]:bg-primary/10 data-[selected=true]:text-primary group"
+                 className="flex items-center px-4 py-3 rounded-2xl hover:bg-primary/5 text-sm font-bold text-foreground cursor-pointer transition-all aria-selected:bg-primary aria-selected:text-primary-foreground group mb-1"
                >
-                 <Hash className="mr-3 h-4 w-4 shrink-0 opacity-50 group-data-[selected=true]:opacity-100" />
-                 <span className="font-mono text-xs font-black opacity-40 mr-3 shrink-0">{task.storyCode}</span>
-                 {task.code && <span className="font-mono text-[10px] text-primary/80 bg-primary/10 px-1.5 py-0.5 rounded font-black mr-2 shrink-0">{task.code}</span>}
-                 <span className="font-semibold truncate">{task.title}</span>
+                 <Hash className="mr-3 h-4 w-4 shrink-0 opacity-50 group-aria-selected:opacity-100" />
+                 <span className="font-mono text-[10px] font-black opacity-40 mr-3 shrink-0 uppercase tracking-tighter">{task.storyCode}</span>
+                 <span className="truncate">{task.title}</span>
                  {task.status !== 'pending' && (
-                    <span className="ml-auto flex shrink-0 text-[9px] uppercase font-bold text-muted-foreground tracking-wider border border-border/50 px-1.5 rounded">{task.status.replace('_', ' ')}</span>
+                    <Badge variant="outline" className="ml-auto text-[9px] uppercase font-black border-none group-aria-selected:bg-background/20">
+                      {task.status.replace('_', ' ')}
+                    </Badge>
                  )}
                </Command.Item>
              ))}
           </Command.Group>
         </Command.List>
+
+        <div className="bg-primary/5 border-t border-primary/10 px-6 py-3 flex items-center justify-between">
+           <p className="text-[10px] text-primary/60 font-black uppercase tracking-widest">BioTask Synapse Engine</p>
+           <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                 <kbd className="bg-background border border-border rounded px-1.5 py-0.5 text-[10px] font-mono">↑↓</kbd>
+                 <span className="text-[9px] font-bold uppercase">Navegar</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                 <kbd className="bg-background border border-border rounded px-1.5 py-0.5 text-[10px] font-mono">ENTER</kbd>
+                 <span className="text-[9px] font-bold uppercase">Seleccionar</span>
+              </div>
+           </div>
+        </div>
       </Command>
     </div>
   )

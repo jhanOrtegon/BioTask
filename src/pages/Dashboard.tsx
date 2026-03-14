@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
@@ -8,13 +8,21 @@ import { useAuthStore } from '@/features/auth/store'
 import { useTasksStore } from '@/features/tasks/store'
 import { useSprintsStore } from '@/features/sprints/store'
 import { useTeamStore } from '@/features/team/store'
+import { useEpicsStore } from '@/features/epics/store'
 import { Tooltip as ShadcnTooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/shared/ui/tooltip'
-import { BookOpen, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as PieChartIcon, RefreshCcw, Zap, Timer, TrendingDown, BarChart3 } from 'lucide-react'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts'
+import { BookOpen, Plus, PenLine, Sparkles, FolderKanban, Activity, PieChart as PieChartIcon, RefreshCcw, Zap, Timer, TrendingDown, BarChart3, Users, Layers, TrendingUp } from 'lucide-react'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend } from 'recharts'
 import { toast } from 'sonner'
-import { format, subDays, isSameDay, startOfDay } from 'date-fns'
+import { format, subDays, isSameDay, startOfDay, addDays, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { generateSeedData } from '@/shared/utils/seed-data'
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectValue, 
+  SelectTrigger 
+} from '@/shared/ui/select'
 
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
 
@@ -24,7 +32,11 @@ export function Dashboard() {
   const { stories, syncTasksIds, setStories } = useStoriesStore()
   const { startNewTask } = useTasksStore()
   const { sprints, setSprints } = useSprintsStore()
-  const { setMembers, getMemberById } = useTeamStore()
+  const { setMembers, getMemberById, members } = useTeamStore()
+  const { setEpics } = useEpicsStore()
+  
+  const [dashboardView, setDashboardView] = useState<'general' | 'individual'>('general')
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('')
 
   const handleSync = () => {
     syncTasksIds()
@@ -37,22 +49,104 @@ export function Dashboard() {
       setMembers(data.members)
       setStories(data.stories)
       setSprints(data.sprints)
+      setEpics(data.epics)
       toast.success('Simulación cargada', { 
-        description: 'Se han generado 15 miembros, 2 sprints y múltiples historias con tracking real.' 
+        description: 'Se han generado 20 miembros, Epics, 4 sprints y múltiples historias con tracking real de 1 mes.' 
       })
     }
   }
 
-  const activeStories = useMemo(() => stories.filter(s => s.status === 'active'), [stories])
-  const totalTasks = useMemo(() => stories.reduce((acc, story) => acc + story.tasks.filter(t => t.status !== 'archived').length, 0), [stories])
+  const activeStories = useMemo(() => {
+    const base = stories.filter(s => s.status === 'active')
+    if (dashboardView === 'individual' && selectedMemberId) {
+      return base.filter(s => s.tasks.some(t => t.assignedTo === selectedMemberId && t.status !== 'archived'))
+    }
+    return base
+  }, [stories, dashboardView, selectedMemberId])
+
+  const teamTasks = useMemo(() => stories.flatMap(s => s.tasks.filter(t => t.status !== 'archived')), [stories])
+  
+  const individualTasks = useMemo(() => {
+    if (!selectedMemberId) return []
+    return teamTasks.filter(t => t.assignedTo === selectedMemberId)
+  }, [teamTasks, selectedMemberId])
+
+  const allTasksArray = useMemo(() => {
+    if (dashboardView === 'individual' && selectedMemberId) return individualTasks
+    return teamTasks
+  }, [dashboardView, selectedMemberId, individualTasks, teamTasks])
+
+  const totalTasksCount = useMemo(() => allTasksArray.length, [allTasksArray])
 
   const handleQuickTask = () => {
     startNewTask()
     void navigate('/editor')
   }
 
-  // --- Analíticas ---
-  const allTasksArray = useMemo(() => stories.flatMap(s => s.tasks.filter(t => t.status !== 'archived')), [stories])
+  // --- Analíticas Robustas ---
+  const teamLoadData = useMemo(() => {
+    const load: Record<string, number> = {}
+    teamTasks.forEach(t => {
+      if (t.assignedTo) {
+        const member = getMemberById(t.assignedTo)
+        if (member) {
+          const hours = (t.timeSpent || 0) / 3600
+          load[member.name] = (load[member.name] || 0) + hours
+        }
+      }
+    })
+    return Object.entries(load)
+      .map(([name, Horas]) => ({ name, Horas: Number(Horas.toFixed(1)) }))
+      .sort((a, b) => b.Horas - a.Horas)
+      .slice(0, 8)
+  }, [teamTasks, getMemberById])
+
+  const teamSpecialtyData = useMemo(() => {
+    const load: Record<string, number> = {}
+    teamTasks.forEach(t => {
+      if (t.assignedTo) {
+        const member = getMemberById(t.assignedTo)
+        if (member) {
+          const spec = member.specialty || 'General'
+          load[spec] = (load[spec] || 0) + (t.timeSpent || 0) / 3600
+        }
+      }
+    })
+    return Object.entries(load)
+      .map(([name, Horas]) => ({ name, Horas: Number(Horas.toFixed(1)) }))
+      .sort((a, b) => b.Horas - a.Horas)
+  }, [teamTasks, getMemberById])
+
+  const individualSpecialtyData = useMemo(() => {
+    const load: Record<string, number> = {}
+    individualTasks.forEach(t => {
+      const hours = (t.timeSpent || 0) / 3600
+      load[t.type] = (load[t.type] || 0) + hours
+    })
+    return Object.entries(load)
+      .map(([name, Horas]) => ({ name, Horas: Number(Horas.toFixed(1)) }))
+      .sort((a, b) => b.Horas - a.Horas)
+  }, [individualTasks])
+
+  const individualImpactData = useMemo(() => {
+    if (!selectedMemberId) return []
+    
+    const teamTotalHours = teamTasks.reduce((acc, t) => acc + (t.timeSpent || 0), 0) / 3600
+    const myHours = individualTasks.reduce((acc, t) => acc + (t.timeSpent || 0), 0) / 3600
+    const avgHours = teamTotalHours / Math.max(1, members.length)
+
+    return [
+      { name: 'Mi Impacto', Horas: Number(myHours.toFixed(1)), fill: 'var(--primary)' },
+      { name: 'Promedio Equipo', Horas: Number(avgHours.toFixed(1)), fill: 'var(--muted-foreground)' }
+    ]
+  }, [selectedMemberId, individualTasks, teamTasks, members.length])
+
+  const currentMember = useMemo(() => {
+    if (dashboardView === 'individual' && selectedMemberId) {
+      return getMemberById(selectedMemberId)
+    }
+    return null
+  }, [dashboardView, selectedMemberId, getMemberById])
 
   const pieData = useMemo(() => {
     const typeCount = allTasksArray.reduce<Record<string, number>>((acc, task) => {
@@ -61,38 +155,6 @@ export function Dashboard() {
     }, {})
     return Object.entries(typeCount).map(([name, value]) => ({ name, value }))
   }, [allTasksArray])
-
-  const teamLoadData = useMemo(() => {
-    const load: Record<string, number> = {}
-    allTasksArray.forEach(t => {
-      if (t.assignedTo) {
-        const member = getMemberById(t.assignedTo)
-        if (member) {
-          load[member.name] = (load[member.name] || 0) + 1
-        }
-      }
-    })
-    return Object.entries(load)
-      .map(([name, value]) => ({ name, Tareas: value }))
-      .sort((a, b) => b.Tareas - a.Tareas)
-      .slice(0, 8)
-  }, [allTasksArray, getMemberById])
-
-  const specialtyLoadData = useMemo(() => {
-    const load: Record<string, number> = {}
-    allTasksArray.forEach(t => {
-      if (t.assignedTo) {
-        const member = getMemberById(t.assignedTo)
-        if (member) {
-          const spec = member.specialty || 'General'
-          load[spec] = (load[spec] || 0) + 1
-        }
-      }
-    })
-    return Object.entries(load)
-      .map(([name, value]) => ({ name, Tareas: value }))
-      .sort((a, b) => b.Tareas - a.Tareas)
-  }, [allTasksArray, getMemberById])
 
   // --- Sprint Pulse Logic ---
   const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
@@ -134,9 +196,9 @@ export function Dashboard() {
   const sprintProgress = useMemo(() => {
     if (!activeSprint) return 0
     const sprintStories = stories.filter(s => activeSprint.storyIds.includes(s.id))
-    const total = sprintStories.reduce((acc, s) => acc + s.tasks.length, 0)
+    const total = sprintStories.reduce((acc: number, s) => acc + s.tasks.length, 0)
     if (total === 0) return 0
-    const completed = sprintStories.reduce((acc, s) => acc + s.tasks.filter(t => t.status === 'completed').length, 0)
+    const completed = sprintStories.reduce((acc: number, s) => acc + s.tasks.filter(t => t.status === 'completed').length, 0)
     return Math.round((completed / total) * 100)
   }, [activeSprint, stories])
 
@@ -147,9 +209,9 @@ export function Dashboard() {
   }, [activeSprint])
 
   // --- Daily Performance Logic ---
+  const last7Days = useMemo(() => Array.from({ length: 7 }, (_, i) => subDays(new Date(), 6 - i)), [])
+
   const dailyPerformance = useMemo(() => {
-    const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 6 - i))
-    
     return last7Days.map(day => {
       const dayStart = startOfDay(day)
       let totalSeconds = 0
@@ -157,8 +219,12 @@ export function Dashboard() {
       stories.forEach(story => {
         story.tasks.forEach(task => {
           if (!task.timeLogs) return
+          // Filter by member if in individual view
+          if (dashboardView === 'individual' && selectedMemberId && task.assignedTo !== selectedMemberId) return
+
           task.timeLogs.forEach(log => {
             if (!log.startedAt || !log.endedAt) return
+            
             const start = new Date(log.startedAt)
             if (isSameDay(start, dayStart)) {
               const end = new Date(log.endedAt)
@@ -175,7 +241,66 @@ export function Dashboard() {
         seconds: totalSeconds
       }
     })
-  }, [stories])
+  }, [stories, dashboardView, selectedMemberId, last7Days])
+
+  // --- Bio-Forecast Logic ---
+  const bioForecast = useMemo(() => {
+    if (!activeSprint || burndownData.length === 0) return null
+    
+    const completedStories = stories.filter(s => activeSprint.storyIds.includes(s.id) && s.tasks.every(t => t.status === 'completed'))
+    const totalStories = stories.filter(s => activeSprint.storyIds.includes(s.id))
+    
+    // Velocity calculation (Stories per day)
+    const daysSinceStart = differenceInDays(new Date(), new Date(activeSprint.startDate)) || 1
+    const velocity = completedStories.length / daysSinceStart
+    
+    const remainingStories = totalStories.length - completedStories.length
+    const daysToFinish = velocity > 0 ? Math.ceil(remainingStories / velocity) : 99
+    
+    const predictedEndDate = addDays(new Date(), daysToFinish)
+    const deadline = new Date(activeSprint.endDate)
+    const isDelayLikely = predictedEndDate > deadline
+    
+    return {
+      predictedEndDate,
+      daysToFinish,
+      isDelayLikely,
+      velocity: velocity.toFixed(2),
+      status: isDelayLikely ? 'danger' : (velocity > 0 ? 'healthy' : 'stagnant')
+    }
+  }, [activeSprint, burndownData, stories])
+
+  const handleGenerateReport = () => {
+    const today = new Date()
+    const todaysWork = stories.flatMap(s => s.tasks.filter(t => 
+      t.timeLogs?.some(log => isSameDay(new Date(log.startedAt), today))
+    ))
+
+    const report = `
+# 🧪 BioTask Daily Lab Report - ${format(today, 'dd/MM/yyyy')}
+---
+## 🎯 Logros de Hoy
+${todaysWork.length > 0 ? todaysWork.map(t => `- [${t.code || 'TASK'}] ${t.title} (${t.status.replace('_', ' ')})`).join('\n') : '- No hay actividad registrada hoy.'}
+
+## 🚀 Próximos Pasos
+- Continuar con el avance de las historias activas.
+- Revisar cuellos de botella detectados por Bio-Forecast.
+
+## 📊 Estado del Sprint
+- **Progreso:** ${String(sprintProgress)}%
+- **Pronóstico:** ${bioForecast?.isDelayLikely ? '🚩 Riesgo de Retraso' : '✅ En Tiempo'}
+---
+*Generado automáticamente por BioTask Synapse*
+    `
+    
+    const blob = new Blob([report], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `BioTask_Report_${format(today, 'yyyy-MM-dd')}.md`
+    a.click()
+    toast.success('Reporte generado', { description: 'El Lab Report ha sido descargado en formato Markdown.' })
+  }
 
   const todayMetrics = useMemo(() => {
     const today = dailyPerformance[dailyPerformance.length - 1]
@@ -217,7 +342,6 @@ export function Dashboard() {
     let totalEst = 0
     let totalReal = 0
     
-    // Desglose por tipo (BE vs FE)
     const typeDeviation: Record<string, { est: number, real: number }> = {
       'BE-': { est: 0, real: 0 },
       'FE-': { est: 0, real: 0 }
@@ -229,11 +353,9 @@ export function Dashboard() {
       totalEst += est
       totalReal += real
 
-      const prefix = (task as { techPrefix?: string }).techPrefix || (task.code?.startsWith('BE') ? 'BE-' : 'FE-')
-      if (typeDeviation[prefix]) {
-        typeDeviation[prefix].est += est
-        typeDeviation[prefix].real += real
-      }
+      const prefix = (task as { techPrefix?: string }).techPrefix === 'BE-' ? 'BE-' : 'FE-'
+      typeDeviation[prefix].est += est
+      typeDeviation[prefix].real += real
     })
 
     const accuracy = totalEst > 0 ? Math.max(0, 100 - (Math.abs(totalReal - totalEst) / totalEst) * 100) : 100
@@ -261,13 +383,53 @@ export function Dashboard() {
           <div className="space-y-2">
             <h1 className="text-4xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-primary" />
-              Panel de Control
+              {dashboardView === 'general' ? 'Panel de Control' : `Vista: ${currentMember?.name || 'Miembro'}`}
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl pl-11">
-              Bienvenido a BioTask Standard Edition. Gestiona tus historias de Jira y redacta tareas técnicas estructuradas.
-            </p>
+            <div className="flex items-center gap-4 pl-11">
+              <div className="flex bg-secondary/30 p-1 rounded-xl border border-primary/5">
+                <Button 
+                  variant={dashboardView === 'general' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="rounded-lg font-bold text-xs h-8 px-4"
+                  onClick={() => { setDashboardView('general') }}
+                >
+                  General
+                </Button>
+                <Button 
+                  variant={dashboardView === 'individual' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="rounded-lg font-bold text-xs h-8 px-4"
+                  onClick={() => { setDashboardView('individual') }}
+                >
+                  Individual
+                </Button>
+              </div>
+
+              {dashboardView === 'individual' && (
+                <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                  <SelectTrigger className="h-10 w-[220px] bg-card border-primary/10 rounded-xl font-bold text-xs shadow-sm">
+                    <Users className="h-3.5 w-3.5 mr-2 text-primary" />
+                    <SelectValue placeholder="Seleccionar Miembro" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {members.map(m => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs font-bold font-mono">
+                        {m.name} <span className="text-[9px] opacity-40 ml-1">({m.specialty})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Button 
+                onClick={handleGenerateReport}
+                variant="outline"
+                className="rounded-2xl font-bold h-12 px-6 border-primary/20 hover:bg-primary/5 gap-2 transition-all active:scale-95 shadow-lg shadow-primary/5"
+            >
+                <BookOpen className="h-4 w-4" /> Lab Report
+            </Button>
             {role !== 'Editor' && (
               <>
                 <TooltipProvider>
@@ -277,7 +439,7 @@ export function Dashboard() {
                         variant="outline" 
                         size="icon" 
                         className="h-10 w-10 md:h-12 md:w-12 rounded-2xl border-2 border-dashed border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                        onClick={handleSeed}
+                        onClick={() => { handleSeed() }}
                       >
                         <Sparkles className="h-5 w-5 text-primary group-hover:scale-125 transition-transform" />
                       </Button>
@@ -319,6 +481,63 @@ export function Dashboard() {
           </div>
         </header>
 
+        {/* Vital Status & Bio-Forecast Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-2 border-primary/20 bg-primary/5 backdrop-blur-xl relative overflow-hidden rounded-[2.5rem]">
+            <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary/10 blur-[100px]" />
+            <CardContent className="p-8 flex flex-col md:flex-row items-center gap-8 relative">
+                <div className="relative shrink-0">
+                    <svg className="h-32 w-32 transform -rotate-90">
+                        <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-primary/10" />
+                        <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="10" fill="transparent" 
+                            strokeDasharray={364.42}
+                            strokeDashoffset={364.42 - (364.42 * sprintProgress) / 100}
+                            className="text-primary transition-all duration-[2s] ease-out stroke-round"
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center flex-col leading-none">
+                        <span className="text-3xl font-black">{sprintProgress}%</span>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Sincronía</span>
+                    </div>
+                </div>
+                <div className="flex-1 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Badge className="bg-primary/20 text-primary border-none text-[10px] uppercase font-black px-2 py-0.5">Bio-Forecast Active</Badge>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{activeSprint?.name || 'Cargando Sprint...'}</span>
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-black tracking-tight leading-none mb-2">Estado Vital del Sprint</h2>
+                        <p className="text-sm text-muted-foreground font-medium max-w-md">
+                            {bioForecast?.isDelayLikely 
+                                ? `⚠️ Riesgo detectado. Al ritmo actual (${bioForecast.velocity} historias/día), el sprint podría exceder la fecha límite por ${String(Math.abs(differenceInDays(bioForecast.predictedEndDate, new Date(activeSprint?.endDate || ''))))} días.` 
+                                : `✅ Ritmo óptimo. Se prevé que el sprint finalice en ${String(bioForecast?.daysToFinish || 0)} días, dentro de los parámetros esperados.`}
+                        </p>
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${bioForecast?.status === 'danger' ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                            <span className="text-xs font-bold uppercase tracking-wider">{bioForecast?.status === 'danger' ? 'Retraso Crítico' : 'Flujo Saludable'}</span>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-border/50 bg-card rounded-[2.5rem] p-8 flex flex-col justify-between">
+            <div className="space-y-1">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Próximo Hito</span>
+                <p className="text-xl font-bold tracking-tight">Cierre de Sprint</p>
+            </div>
+            <div className="mt-4">
+                <div className="flex items-baseline gap-2 leading-none">
+                    <span className="text-6xl font-black text-foreground">{daysLeft}</span>
+                    <span className="text-xl font-bold text-muted-foreground">días</span>
+                </div>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2">{activeSprint ? format(new Date(activeSprint.endDate), "eeee, dd 'de' MMMM", { locale: es }) : ''}</p>
+            </div>
+          </Card>
+        </div>
+
         {/* Métricas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="bg-gradient-to-br from-card to-primary/5 border-primary/10 shadow-sm">
@@ -338,7 +557,7 @@ export function Dashboard() {
             <CardHeader className="pb-2">
               <CardDescription className="font-bold uppercase tracking-wider text-xs">Tareas Activas</CardDescription>
               <CardTitle className="text-4xl font-black flex items-center justify-between">
-                {totalTasks}
+                {totalTasksCount}
                 <FolderKanban className="h-8 w-8 text-blue-500/40" />
               </CardTitle>
             </CardHeader>
@@ -533,8 +752,8 @@ export function Dashboard() {
                         dataKey="value"
                       >
                         {pieData.map((_, index) => (
-                          /* eslint-disable-next-line @typescript-eslint/no-deprecated */
-                          <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
+                           /* eslint-disable-next-line @typescript-eslint/no-deprecated */
+                           <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <RechartsTooltip
@@ -552,102 +771,212 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 shadow-sm bg-card">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-black flex items-center gap-2">
-                  <TrendingDown className="h-5 w-5 text-orange-500" /> Eficiencia
-                </CardTitle>
-                <CardDescription>Real vs Est por Capa</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {deviationMetrics.typeData.length > 0 ? (
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={deviationMetrics.typeData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tick={{ fontWeight: 800 }} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} unit="h" />
-                      <RechartsTooltip
-                        cursor={{ fill: 'var(--muted)' }}
-                        contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                      />
-                      <Bar dataKey="Real" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={50} />
-                      <Bar dataKey="Estimado" fill="#e2e8f0" radius={[6, 6, 0, 0]} maxBarSize={50} />
-                    </BarChart>
-                  </ResponsiveContainer>
+        {/* Graphics Section - Dynamically switched by view */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
+          {dashboardView === 'general' ? (
+            <>
+              {/* General View: Team Load Bar Chart */}
+              <Card className="border-border/50 bg-card rounded-[2.5rem] p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black">Distribución de Carga</h3>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Horas totales por desarrollador</p>
+                  </div>
+                  <BarChart3 className="h-5 w-5 text-primary/40" />
                 </div>
-              ) : (
-                <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm font-medium border border-dashed border-border/50 rounded-lg">
-                  Sin datos suficientes
+                <div className="h-[300px] w-full mt-4">
+                  {teamLoadData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={teamLoadData} layout="vertical" margin={{ left: 40, right: 30 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" opacity={0.3} />
+                        <XAxis type="number" hide />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          style={{ fontSize: 10, fontWeight: 800, fill: 'var(--muted-foreground)' }} 
+                          width={100}
+                        />
+                        <RechartsTooltip 
+                          cursor={{ fill: 'var(--primary)', opacity: 0.05 }}
+                          contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)' }} 
+                        />
+                        <Bar dataKey="Horas" fill="var(--primary)" radius={[0, 8, 8, 0]} barSize={20} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground/30 text-xs font-black uppercase tracking-widest border border-dashed border-border/50 rounded-3xl">
+                      Sin datos de tiempo
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </Card>
 
-          <Card className="border-border/50 shadow-sm bg-card">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-black flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-purple-500" /> Carga Individual
-                </CardTitle>
-                <CardDescription>Top 8 programadores</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {teamLoadData.length > 0 ? (
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={teamLoadData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} tick={{ fontWeight: 800 }} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                      <RechartsTooltip
-                        cursor={{ fill: 'var(--muted)' }}
-                        contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                      />
-                      <Bar dataKey="Tareas" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                    </BarChart>
-                  </ResponsiveContainer>
+              {/* General View: Specialty Distribution Pie Chart */}
+              <Card className="border-border/50 bg-card rounded-[2.5rem] p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black">Fuerza por Especialidad</h3>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Esfuerzo por capa tecnológica</p>
+                  </div>
+                  <PieChartIcon className="h-5 w-5 text-primary/40" />
                 </div>
-              ) : (
-                <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm font-medium border border-dashed border-border/50 rounded-lg">
-                  Sin asignaciones
+                <div className="h-[300px] w-full flex items-center justify-center">
+                  {teamSpecialtyData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={teamSpecialtyData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={80}
+                          outerRadius={100}
+                          paddingAngle={8}
+                          dataKey="Horas"
+                          nameKey="name"
+                        >
+                          {teamSpecialtyData.map((_, index) => (
+                            <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          content={({ payload }) => {
+                            if (payload && payload.length) {
+                              const data = payload[0].payload as { name: string, Horas: number }
+                              return (
+                                <div className="bg-card border border-border p-3 rounded-2xl shadow-xl">
+                                  <p className="text-[10px] font-black text-primary uppercase mb-1">{data.name}</p>
+                                  <p className="text-lg font-black">{data.Horas}h</p>
+                                </div>
+                              )
+                            }
+                            return null
+                          }}
+                        />
+                        <Legend 
+                          verticalAlign="bottom" 
+                          align="center"
+                          iconType="circle"
+                          wrapperStyle={{ fontSize: '10px', fontWeight: 800, paddingTop: '20px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-muted-foreground/30 text-xs font-black uppercase tracking-widest border border-dashed border-border/50 rounded-3xl">
+                      Sin datos técnicos
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </Card>
+            </>
+          ) : (
+            <>
+              {/* Individual View: Comparative Impact Chart */}
+              <Card className="border-border/50 bg-card rounded-[2.5rem] p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black">Impacto vs Media del Equipo</h3>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Comparativa de horas históricas</p>
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-primary/40" />
+                </div>
+                <div className="h-[300px] w-full mt-4">
+                  {individualImpactData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={individualImpactData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase' }} 
+                        />
+                        <YAxis axisLine={false} tickLine={false} hide />
+                        <RechartsTooltip 
+                          content={({ payload }) => {
+                            if (payload && payload.length) {
+                               return (
+                                 <div className="bg-card border border-border p-4 rounded-2xl shadow-2xl">
+                                   <p className="text-2xl font-black text-primary">{String(payload[0].value)}h</p>
+                                   <p className="text-[10px] font-black uppercase text-muted-foreground">Inversión total técnica</p>
+                                 </div>
+                               )
+                            }
+                            return null
+                          }}
+                        />
+                        <Bar dataKey="Horas" radius={[12, 12, 0, 0]} barSize={60} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground/30 text-xs font-black uppercase tracking-widest border border-dashed border-border/50 rounded-3xl">
+                      Esperando datos individuales
+                    </div>
+                  )}
+                </div>
+              </Card>
 
-          <Card className="border-border/50 shadow-sm bg-card">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-black flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-pink-500" /> Carga por Grupo
-                </CardTitle>
-                <CardDescription>Frontend vs Backend vs QA</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {specialtyLoadData.length > 0 ? (
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={specialtyLoadData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tick={{ fontWeight: 800 }} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                      <RechartsTooltip
-                        cursor={{ fill: 'var(--muted)' }}
-                        contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                      />
-                      <Bar dataKey="Tareas" fill="#ec4899" radius={[6, 6, 0, 0]} maxBarSize={50} />
-                    </BarChart>
-                  </ResponsiveContainer>
+              {/* Individual View: Personal Specialty Balance */}
+              <Card className="border-border/50 bg-card rounded-[2.5rem] p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black">Balance de Especialidad</h3>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Enfoque técnico de {members.find(m => m.id === selectedMemberId)?.name.split(' ')[0]}</p>
+                  </div>
+                  <Layers className="h-5 w-5 text-primary/40" />
                 </div>
-              ) : (
-                <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm font-medium border border-dashed border-border/50 rounded-lg">
-                  Sin datos de grupos
+                <div className="h-[300px] w-full flex items-center justify-center">
+                  {individualSpecialtyData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={individualSpecialtyData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={90}
+                          paddingAngle={4}
+                          dataKey="Horas"
+                          nameKey="name"
+                        >
+                          {individualSpecialtyData.map((_, index) => (
+                            <Cell key={`cell-${String(index)}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          content={({ payload }) => {
+                            if (payload && payload.length) {
+                              const data = payload[0].payload as { name: string, Horas: number }
+                              return (
+                                <div className="bg-card border border-border p-3 rounded-2xl shadow-xl border-primary/20">
+                                  <p className="text-[9px] font-black text-primary uppercase mb-1">{data.name}</p>
+                                  <p className="text-lg font-black">{data.Horas}h <span className="text-[10px] text-muted-foreground font-bold">invertidas</span></p>
+                                </div>
+                              )
+                            }
+                            return null
+                          }}
+                        />
+                        <Legend 
+                          layout="vertical"
+                          verticalAlign="middle" 
+                          align="right"
+                          iconType="circle"
+                          wrapperStyle={{ fontSize: '10px', fontWeight: 800, paddingLeft: '20px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-muted-foreground/30 text-xs font-black uppercase tracking-widest border border-dashed border-border/50 rounded-3xl">
+                      Sin actividad registrada
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </Card>
+            </>
+          )}
+        </div>
 
         </div>
 
@@ -726,8 +1055,8 @@ export function Dashboard() {
                       unit="h"
                     />
                     <RechartsTooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
+                      content={({ payload }) => {
+                        if (payload.length) {
                           const data = payload[0].payload as { fullDate: string, hours: number }
                           return (
                             <div className="bg-card border border-border p-3 rounded-2xl shadow-2xl">

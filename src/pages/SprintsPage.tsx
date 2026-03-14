@@ -36,10 +36,12 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { CommentDialog } from '@/shared/ui/comment-dialog'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import type { Sprint, SprintStatus } from '@/features/sprints/types'
+import { Pagination } from '@/shared/ui/pagination'
 
 const sprintSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -62,16 +64,17 @@ function formatDate(iso: string) {
 export function SprintsPage() {
   const { sprints, addSprint, updateSprint, setSprintStories } = useSprintsStore()
   const { stories } = useStoriesStore()
-
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 6
   const [selectedStoryIds, setSelectedStoryIds] = useState<string[]>([])
   const [showSaveConfirm, setShowSaveConfirm] = useState(false)
   const [showLaunchConfirm, setShowLaunchConfirm] = useState(false)
   const [pendingLaunchStatus, setPendingLaunchStatus] = useState<{ id: string, status: SprintStatus } | null>(null)
+  const [showEditAudit, setShowEditAudit] = useState(false)
 
   const activeStories = useMemo(() => stories.filter(s => s.status !== 'archived'), [stories])
-
   const form = useForm<SprintFormValues>({
     resolver: zodResolver(sprintSchema),
     defaultValues: {
@@ -118,30 +121,41 @@ export function SprintsPage() {
     setShowSaveConfirm(false)
   }
 
+  const totalPages = Math.ceil(sprints.length / ITEMS_PER_PAGE)
+  const paginatedSprints = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return sprints.slice(start, start + ITEMS_PER_PAGE)
+  }, [sprints, currentPage])
+
   const confirmSave = () => {
-    const values = form.getValues()
-    
-    if (editingSprint) {
-      updateSprint(editingSprint.id, {
-        name: values.name.trim(),
-        goal: values.goal?.trim() || undefined,
-        startDate: new Date(values.startDate).toISOString(),
-        endDate: new Date(values.endDate).toISOString()
-      })
-      setSprintStories(editingSprint.id, selectedStoryIds)
-      toast.success('Sprint Actualizado', { description: 'Los cambios han sido guardados.' })
-    } else {
-      const newSprint = addSprint({
-        name: values.name.trim(),
-        goal: values.goal?.trim() || undefined,
-        startDate: new Date(values.startDate).toISOString(),
-        endDate: new Date(values.endDate).toISOString()
-      })
-      setSprintStories(newSprint.id, selectedStoryIds)
-      toast.success('Sprint Creado', { description: 'El sprint ha sido añadido a la planificación.' })
-    }
-    
     setShowSaveConfirm(false)
+    if (editingSprint) {
+      setShowEditAudit(true)
+    } else {
+      executeSave('Creado inicialmente')
+    }
+  }
+
+  const executeSave = (comment: string) => {
+    const values = form.getValues()
+    const sprintData = {
+      name: values.name.trim(),
+      goal: values.goal?.trim() || undefined,
+      startDate: new Date(values.startDate).toISOString(),
+      endDate: new Date(values.endDate).toISOString(),
+    }
+
+    if (editingSprint) {
+      updateSprint(editingSprint.id, sprintData, comment)
+      setSprintStories(editingSprint.id, selectedStoryIds)
+      toast.success('Sprint actualizado', { description: 'Cambios registrados en auditoría.' })
+    } else {
+      const newSprint = addSprint(sprintData)
+      setSprintStories(newSprint.id, selectedStoryIds)
+      toast.success('Sprint planificado con éxito', { description: 'El sprint ha sido añadido a la planificación.' })
+    }
+
+    setShowEditAudit(false)
     setIsDialogOpen(false)
   }
 
@@ -166,10 +180,10 @@ export function SprintsPage() {
         const sprintStories = activeStories.filter(s => sprint.storyIds.includes(s.id))
         const totalTasks = sprintStories.reduce((acc, curr) => acc + curr.tasks.filter(t => t.status !== 'archived').length, 0)
         const completedTasks = sprintStories.reduce((acc, curr) => acc + curr.tasks.filter(t => t.status === 'completed').length, 0)
-        
+
         if (totalTasks > 0 && completedTasks < totalTasks) {
-          toast.error('Sprint Incompleto', { 
-            description: `No se puede finalizar el sprint. Hay ${String(totalTasks - completedTasks)} tareas pendientes.` 
+          toast.error('Sprint Incompleto', {
+            description: `No se puede finalizar el sprint. Hay ${String(totalTasks - completedTasks)} tareas pendientes.`
           })
           return
         }
@@ -203,7 +217,7 @@ export function SprintsPage() {
   return (
     <div className="h-full flex flex-col p-8 overflow-y-auto bg-background animate-in fade-in duration-300">
       <Breadcrumbs items={[{ label: 'Planificación de Sprints' }]} />
-      
+
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 shrink-0">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -220,7 +234,7 @@ export function SprintsPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <div className="hidden lg:flex items-center gap-6 px-6 py-3 bg-muted/30 border border-border/50 rounded-2xl mr-2">
             <div className="text-center">
@@ -242,16 +256,18 @@ export function SprintsPage() {
       {/* Sprints Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-8">
         {sprints.length === 0 ? (
-          <div className="col-span-full py-32 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-[2.5rem] text-center bg-muted/5">
-            <div className="p-6 rounded-3xl bg-primary/5 border border-primary/10 mb-6 group-hover:scale-110 transition-transform">
-              <CalendarDays className="h-12 w-12 text-primary/40" />
+          <div className="flex flex-col items-center justify-center py-24 bg-muted/5 rounded-[2.5rem] border-2 border-dashed border-border/50">
+            <div className="h-20 w-20 rounded-3xl bg-muted flex items-center justify-center mb-4">
+              <CalendarDays className="h-10 w-10 text-muted-foreground/30" />
             </div>
-            <h3 className="text-xl font-black mb-2">Proyecto sin latido</h3>
-            <p className="text-sm text-muted-foreground mb-8 max-w-sm font-medium">No hay ningún ciclo de desarrollo configurado. El sprint es el motor que mueve tu equipo hacia la meta.</p>
-            <Button onClick={openCreate} variant="outline" size="lg" className="rounded-xl font-bold">Diseñar Sprint Vital</Button>
+            <h3 className="text-xl font-bold text-foreground">No hay sprints planificados</h3>
+            <p className="text-muted-foreground mt-2 font-medium text-center max-w-xs">Comienza por crear tu primer ciclo de trabajo estratégico.</p>
+            <Button variant="outline" className="mt-6 rounded-xl font-bold" onClick={() => { setEditingSprint(null); form.reset(); setIsDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" /> Planificar Ahora
+            </Button>
           </div>
         ) : (
-          sprints.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(sprint => {
+          paginatedSprints.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(sprint => {
             const sprintStories = activeStories.filter(s => sprint.storyIds.includes(s.id))
             const totalTasks = sprintStories.reduce((acc, curr) => acc + curr.tasks.filter(t => t.status !== 'archived').length, 0)
             const completedTasks = sprintStories.reduce((acc, curr) => acc + curr.tasks.filter(t => t.status === 'completed').length, 0)
@@ -362,6 +378,16 @@ export function SprintsPage() {
           })
         )}
       </div>
+
+      {sprints.length > ITEMS_PER_PAGE && (
+        <div className="pt-8 pb-12">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
 
       {/* Creación / Edición Dialog */}
       <Dialog 
@@ -544,7 +570,6 @@ export function SprintsPage() {
         description={editingSprint ? "Se sobrescribirán los datos actuales del sprint." : "Se creará un nuevo ciclo con la configuración actual."}
         confirmText="Confirmar"
       />
-
       <ConfirmDialog
         open={showLaunchConfirm}
         onOpenChange={setShowLaunchConfirm}
@@ -553,6 +578,14 @@ export function SprintsPage() {
         description="Hay otro sprint activo. Al activar este, el anterior se marcará como completado automáticamente. ¿Deseas continuar?"
         confirmText="Sí, lanzar"
         variant="default"
+      />
+
+      <CommentDialog
+        open={showEditAudit}
+        onOpenChange={setShowEditAudit}
+        title="Justificar Cambios en Sprint"
+        description="Escribe el motivo de la modificación para el registro de auditoría."
+        onConfirm={executeSave}
       />
     </div>
   )

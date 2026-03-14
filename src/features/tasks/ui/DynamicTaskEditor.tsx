@@ -58,12 +58,24 @@ import type { TaskDraft } from "../types"
 interface DynamicTaskEditorProps {
   readOnly?: boolean
   task?: TaskDraft
+  onUpdate?: (updates: Partial<TaskDraft>) => void
 }
 
-export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicTaskEditorProps) {
-  const store = useTasksStore()
-  const currentTask = propTask || store.currentTask
-  const { updateTaskData, updateTaskInfo } = store
+export function DynamicTaskEditor({ readOnly = false, task, onUpdate }: DynamicTaskEditorProps) {
+  const { currentTask: storeTask, updateTaskData: storeUpdateData, updateTaskInfo: storeUpdateInfo, setJiraContent } = useTasksStore()
+  
+  // Use either the task passed by prop or the one in the store
+  const currentTask = task || storeTask
+
+  const updateTaskInfo = (info: Partial<TaskDraft>) => {
+    if (onUpdate) onUpdate(info)
+    storeUpdateInfo(info)
+  }
+
+  const updateTaskData = (data: Partial<TaskDraft['data']>) => {
+    if (onUpdate) onUpdate({ data: { ...currentTask.data, ...data } })
+    storeUpdateData(data)
+  }
   const { templates } = useTemplatesStore()
   const { stories } = useStoriesStore()
   
@@ -795,10 +807,12 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <GitMerge className="h-5 w-5 text-blue-500" /> Mensaje de Commit Sugerido
+              <GitMerge className="h-5 w-5 text-blue-500" /> {commitLang === 'es' ? 'Mensaje de Commit Sugerido' : 'Suggested Commit Message'}
             </DialogTitle>
             <DialogDescription>
-              Autogenerado siguiendo Conventional Commits. Elige el idioma que prefieras.
+              {commitLang === 'es' 
+                ? 'Autogenerado siguiendo Conventional Commits. Elige el idioma que prefieras.' 
+                : 'Auto-generated following Conventional Commits. Choose your preferred language.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -837,9 +851,9 @@ export function DynamicTaskEditor({ readOnly = false, task: propTask }: DynamicT
               onClick={handleCopyCommit}
             >
               {copied ? (
-                <><CheckCircle2 className="h-4 w-4" /> Copiado</>
+                <><CheckCircle2 className="h-4 w-4" /> {commitLang === 'es' ? 'Copiado' : 'Copied'}</>
               ) : (
-                <><ClipboardCopy className="h-4 w-4" /> Copiar</>
+                <><ClipboardCopy className="h-4 w-4" /> {commitLang === 'es' ? 'Copiar' : 'Copy'}</>
               )}
             </Button>
           </div>

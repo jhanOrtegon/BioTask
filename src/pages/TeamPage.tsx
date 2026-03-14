@@ -18,7 +18,6 @@ import {
   Filter,
   BarChart2
 } from 'lucide-react'
-import { useQueryState } from 'nuqs'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { 
@@ -47,6 +46,7 @@ import { Badge } from '@/shared/ui/badge'
 import { cn } from '@/shared/utils'
 import { toast } from 'sonner'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
+import { Pagination } from '@/shared/ui/pagination'
 
 const roleConfig: Record<TeamRole, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   admin:    { label: 'Admin',     icon: ShieldCheck,    color: 'text-red-500',    bg: 'bg-red-500/10' },
@@ -58,8 +58,8 @@ const roleConfig: Record<TeamRole, { label: string; icon: React.ElementType; col
 
 export function TeamPage() {
   const { members, addMember, updateMember, removeMember } = useTeamStore()
-  const [searchTerm, setSearchTerm] = useQueryState('q', { defaultValue: '' })
-  const [groupBy, setGroupBy] = useQueryState('groupBy', { defaultValue: 'none' })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [groupBy, setGroupBy] = useState('none')
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
@@ -70,11 +70,20 @@ export function TeamPage() {
   const [role, setRole] = useState<TeamRole>('developer')
   const [specialty, setSpecialty] = useState('')
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 12
+
   const filteredMembers = members.filter(m => 
     m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.specialty?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE)
+  const paginatedMembers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredMembers.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredMembers, currentPage])
 
   const groupedData = useMemo(() => {
     if (groupBy === 'role') {
@@ -93,8 +102,8 @@ export function TeamPage() {
         return acc
       }, {} as Record<string, TeamMember[]>)
     }
-    return { 'Todos los Miembros': filteredMembers }
-  }, [filteredMembers, groupBy, members])
+    return { 'Todos los Miembros': paginatedMembers }
+  }, [paginatedMembers, groupBy, members])
 
   const handleOpenAdd = () => {
     setEditingMember(null)
@@ -177,7 +186,7 @@ export function TeamPage() {
             placeholder="Buscar por nombre, email o especialidad..." 
             className="pl-12 h-14 bg-card/40 border-border/50 rounded-2xl text-lg font-medium focus:ring-primary/20"
             value={searchTerm}
-            onChange={(e) => { void setSearchTerm(e.target.value || null) }}
+            onChange={(e) => { setSearchTerm(e.target.value) }}
           />
         </div>
         <div className="flex items-center gap-2 bg-secondary/30 p-1.5 rounded-2xl border border-primary/5">
@@ -185,7 +194,7 @@ export function TeamPage() {
             variant={groupBy === 'none' ? 'secondary' : 'ghost'} 
             size="sm" 
             className="rounded-xl font-bold text-xs h-10"
-            onClick={() => { void setGroupBy('none') }}
+             onClick={() => { setGroupBy('none') }}
           >
              Sin Agrupar
            </Button>
@@ -193,7 +202,7 @@ export function TeamPage() {
             variant={groupBy === 'role' ? 'secondary' : 'ghost'} 
             size="sm" 
             className="rounded-xl font-bold text-xs h-10"
-            onClick={() => { void setGroupBy('role') }}
+             onClick={() => { setGroupBy('role') }}
           >
              Por Rol
            </Button>
@@ -201,7 +210,7 @@ export function TeamPage() {
             variant={groupBy === 'specialty' ? 'secondary' : 'ghost'} 
             size="sm" 
             className="rounded-xl font-bold text-xs h-10"
-            onClick={() => { void setGroupBy('specialty') }}
+             onClick={() => { setGroupBy('specialty') }}
           >
              Por Especialidad
            </Button>
@@ -307,6 +316,16 @@ export function TeamPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {filteredMembers.length > ITEMS_PER_PAGE && (
+        <div className="pt-8 pb-12">
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 

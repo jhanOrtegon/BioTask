@@ -17,7 +17,6 @@ import { cn } from '@/shared/utils'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
-import { useQueryState } from 'nuqs'
 
 import {
   Select,
@@ -45,9 +44,9 @@ export function BoardPage() {
   const [resetTimerDialog, setResetTimerDialog] = useState<{ storyId: string; taskId: string; title: string } | null>(null)
   
   // URL States with nuqs
-  const [selectedSprintId, setSelectedSprintId] = useQueryState('sprint', { defaultValue: '' })
-  const [selectedStoryId, setSelectedStoryId] = useQueryState('story', { defaultValue: 'all' })
-  const [searchQuery, setSearchQuery] = useQueryState('q', { defaultValue: '' })
+  const [selectedSprintId, setSelectedSprintId] = useState('')
+  const [selectedStoryId, setSelectedStoryId] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const activeSprint = useMemo(() => sprints.find(s => s.status === 'active'), [sprints])
   const currentSprint = useMemo(() => {
@@ -193,7 +192,7 @@ export function BoardPage() {
 
           <div className="flex flex-wrap items-center gap-3">
              <div className="flex items-center gap-2 bg-secondary/30 p-1.5 rounded-2xl border border-primary/5">
-                <Select value={selectedSprintId || (activeSprint?.id || '')} onValueChange={(v) => { void setSelectedSprintId(v) }}>
+                <Select value={selectedSprintId || (activeSprint?.id || '')} onValueChange={(v) => setSelectedSprintId(v)}>
                   <SelectTrigger className="h-10 w-[180px] bg-background border-none shadow-sm rounded-xl text-xs font-bold">
                     <Calendar className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                     <SelectValue placeholder="Sprint" />
@@ -207,7 +206,7 @@ export function BoardPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={selectedStoryId} onValueChange={(v) => { void setSelectedStoryId(v) }}>
+                <Select value={selectedStoryId} onValueChange={(v) => setSelectedStoryId(v)}>
                   <SelectTrigger className="h-10 w-[180px] bg-background border-none shadow-sm rounded-xl text-xs font-bold">
                     <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                     <SelectValue placeholder="Historia" />
@@ -226,7 +225,7 @@ export function BoardPage() {
                 variant="outline" 
                 size="sm" 
                 className="h-10 px-4 gap-2 text-xs font-bold rounded-xl border-primary/10 bg-primary/5 text-primary hover:bg-primary/10 transition-all"
-                onClick={() => { void navigate('/planner') }}
+                onClick={() => navigate('/planner')}
               >
                 <ListChecks className="h-4 w-4" />
                 Planificador
@@ -244,7 +243,7 @@ export function BoardPage() {
           <Input 
             placeholder="Buscar por tarea, historia o código (Jira)..." 
             value={searchQuery}
-            onChange={(e) => { void setSearchQuery(e.target.value || null) }}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-12 bg-card/50 border-border/50 rounded-2xl pl-12 pr-4 text-sm font-bold focus:ring-primary/20 transition-all"
           />
         </div>

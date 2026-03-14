@@ -23,10 +23,15 @@ export const useSprintsStore = create<SprintsState>()(
         return newSprint
       },
 
-      updateSprint: (id, data) => set((state) => {
-        let newSprints = state.sprints.map(s => 
-          s.id === id ? { ...s, ...data, updatedAt: new Date().toISOString() } : s
-        )
+      updateSprint: (id, data, reason) => set((state) => {
+        let newSprints = state.sprints.map(s => {
+          if (s.id !== id) return s;
+          const auditLog = s.auditLog || [];
+          if (reason) {
+            auditLog.push({ date: new Date().toISOString(), comment: reason });
+          }
+          return { ...s, ...data, auditLog, updatedAt: new Date().toISOString() };
+        })
 
         // Enforce single active sprint: if updating this one to active, others must be planning or completed
         if (data.status === 'active') {

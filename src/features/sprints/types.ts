@@ -10,6 +10,7 @@ export interface Sprint {
   storyIds: string[]; // Many-to-Many relation with stories or just array
   createdAt: string;
   updatedAt: string;
+  auditLog?: { date: string; comment: string }[];
 }
 
 export interface SprintsState {
@@ -17,7 +18,7 @@ export interface SprintsState {
   
   // CRUD
   addSprint: (data: Pick<Sprint, 'name' | 'goal' | 'startDate' | 'endDate'>) => Sprint;
-  updateSprint: (id: string, data: Partial<Pick<Sprint, 'name' | 'goal' | 'startDate' | 'endDate' | 'status'>>) => void;
+  updateSprint: (id: string, data: Partial<Pick<Sprint, 'name' | 'goal' | 'startDate' | 'endDate' | 'status'>>, reason?: string) => void;
   deleteSprint: (id: string) => void;
   
   // Re-assignments

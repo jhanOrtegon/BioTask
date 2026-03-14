@@ -57,6 +57,7 @@ import {
   TooltipTrigger,
 } from '@/shared/ui/tooltip'
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
+import { Pagination } from '@/shared/ui/pagination'
 import { RotateCcw } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -134,6 +135,8 @@ export function StoryDetailPage() {
   const [showBulkDialog, setShowBulkDialog] = useState(false)
   const [bulkText, setBulkText] = useState('')
   const [isCopied, setIsCopied] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   const activeTasks = useMemo(() => (story?.tasks.filter(t => t.status !== 'archived') || []).sort((a, b) => (a.position || 0) - (b.position || 0)), [story?.tasks])
 
@@ -599,8 +602,14 @@ export function StoryDetailPage() {
     },
   ], [story, startTaskTimer, pauseTaskTimer, stopTaskTimer, updateTask, triggerConfetti, navigate, findStoryIdForTask, isReadOnly, getMemberById])
 
+  const totalPages = Math.ceil((story?.tasks.length || 0) / ITEMS_PER_PAGE)
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return (story?.tasks || []).slice(start, start + ITEMS_PER_PAGE)
+  }, [story?.tasks, currentPage])
+
   const table = useReactTable({
-    data: activeTasks,
+    data: paginatedTasks,
     columns,
     getCoreRowModel: getCoreRowModel(),
   })
@@ -809,6 +818,14 @@ export function StoryDetailPage() {
               )}
             </Droppable>
           </DragDropContext>
+        </div>
+        
+        <div className="p-4 bg-muted/5 border-t border-border/40">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useStoriesStore } from '@/features/stories/store'
+import { useEpicsStore } from '@/features/epics/store'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import type { DropResult } from '@hello-pangea/dnd'
 import type { Story } from '@/features/stories/types'
@@ -22,10 +23,19 @@ import {
 } from '@/shared/ui/dialog'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { Textarea } from '@/shared/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select"
+import { cn } from '@/shared/utils'
 import { CommentDialog } from '@/shared/ui/comment-dialog'
 import { Breadcrumbs } from '@/shared/ui/breadcrumbs'
-import { BookOpen, Plus, Archive, RotateCcw, Eye, Edit, GripVertical } from 'lucide-react'
+import {
+  Plus, BookOpen, Archive, RotateCcw, Eye, Edit, GripVertical
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -41,37 +51,65 @@ import {
   TooltipTrigger,
 } from '@/shared/ui/tooltip'
 
+import { Pagination } from '@/shared/ui/pagination'
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', {
     day: '2-digit', month: 'short', year: 'numeric'
   })
 }
 
+import { useLocation } from 'react-router-dom'
+import { Search, Filter, Layers } from 'lucide-react'
+
 export function StoriesPage() {
   const { stories, addStory, updateStory, archiveStory, restoreStory, reorderStory } = useStoriesStore()
+  const { epics } = useEpicsStore()
+  const location = useLocation()
   const navigate = useNavigate()
+  
+  const [search, setSearch] = useState('')
+  const locationState = location.state as { epicId?: string } | null
+  const [epicFilter, setEpicFilter] = useState<string>(locationState?.epicId || 'all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
+
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [archiveDialogId, setArchiveDialogId] = useState<string | null>(null)
-
+  
   const [editStoryId, setEditStoryId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
     code: '',
     title: '',
     module: '',
-    description: ''
+    description: '',
+    epicId: ''
   })
 
-  // ── Form state ──
   const [formCode, setFormCode] = useState('')
   const [formTitle, setFormTitle] = useState('')
   const [formModule, setFormModule] = useState('')
   const [formDesc, setFormDesc] = useState('')
+  const [formEpicId, setFormEpicId] = useState('')
 
-  const filteredStories = useMemo(() => stories
-    .filter(s => showArchived ? s.status === 'archived' : s.status === 'active')
-    .sort((a, b) => (a.position || 0) - (b.position || 0))
-  , [stories, showArchived])
+  const filteredStories = useMemo(() => {
+    return stories
+      .filter(s => showArchived ? s.status === 'archived' : s.status === 'active')
+      .filter(s => {
+        const matchesSearch = s.title.toLowerCase().includes(search.toLowerCase()) || 
+                             s.code.toLowerCase().includes(search.toLowerCase())
+        const matchesEpic = epicFilter === 'all' || s.epicId === epicFilter
+        return matchesSearch && matchesEpic
+      })
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
+  }, [stories, showArchived, search, epicFilter])
+
+  const paginatedStories = useMemo(() => {
+    return filteredStories.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  }, [filteredStories, currentPage])
+
+  const totalPages = Math.ceil(filteredStories.length / ITEMS_PER_PAGE)
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result
@@ -105,9 +143,10 @@ export function StoriesPage() {
       title: formTitle.trim(),
       module: formModule.trim(),
       description: formDesc.trim() || undefined,
+      epicId: formEpicId || undefined,
     })
     toast.success('Historia creada', { description: `${story.code} — ${story.title}` })
-    setFormCode(''); setFormTitle(''); setFormModule(''); setFormDesc('')
+    setFormCode(''); setFormTitle(''); setFormModule(''); setFormDesc(''); setFormEpicId('')
     setIsCreateOpen(false)
   }
 
@@ -119,31 +158,35 @@ export function StoriesPage() {
     setArchiveDialogId(null)
   }
 
-  const handleRestore = (id: string) => {
+  const handleRestore = useCallback((id: string) => {
     const story = stories.find(s => s.id === id)
     restoreStory(id, 'Restaurada manualmente')
     toast.success('Historia restaurada', { description: story?.code || '' })
-  }
+  }, [stories, restoreStory])
 
-  const handleOpenEdit = (story: Story) => {
+  const handleOpenEdit = useCallback((story: Story) => {
     setEditStoryId(story.id)
     setEditForm({
       code: story.code,
       title: story.title,
       module: story.module,
-      description: story.description || ''
+      description: story.description || '',
+      epicId: story.epicId || ''
     })
-  }
+  }, [])
 
-  const handleUpdate = () => {
+  const [editCommentDialog, setEditCommentDialog] = useState(false)
+
+  const handleUpdate = (comment: string) => {
     if (!editStoryId) return
     if (!editForm.code.trim() || !editForm.title.trim() || !editForm.module.trim()) {
       toast.error('Campos obligatorios vacíos')
       return
     }
-    updateStory(editStoryId, editForm, 'Historia editada desde la lista')
-    toast.success('Historia actualizada')
+    updateStory(editStoryId, editForm, comment)
+    toast.success('Historia actualizada', { description: 'Cambios registrados en auditoría.' })
     setEditStoryId(null)
+    setEditCommentDialog(false)
   }
 
   const columns = useMemo<ColumnDef<Story>[]>(() => [
@@ -176,6 +219,19 @@ export function StoriesPage() {
       ),
     },
     {
+      id: 'epic',
+      header: 'Épica',
+      cell: ({ row }) => {
+        const epic = epics.find(e => e.id === row.original.epicId)
+        return epic ? (
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: epic.color }} />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase">{epic.code}</span>
+          </div>
+        ) : <span className="text-[10px] text-muted-foreground/30">-</span>
+      }
+    },
+    {
       accessorKey: 'module',
       header: 'Módulo',
       cell: ({ row }) => (
@@ -204,11 +260,11 @@ export function StoriesPage() {
     },
     {
       id: 'actions',
-      header: () => <div className="text-right">Acciones</div>,
+      header: () => <div className="text-right px-5">Acciones</div>,
       cell: ({ row }) => {
         const story = row.original
         return (
-          <div className="flex justify-end gap-1">
+          <div className="flex justify-end gap-1 px-2">
             <TooltipProvider delayDuration={200}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -216,7 +272,7 @@ export function StoriesPage() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
-                    onClick={() => { void navigate(`/stories/${story.id}`) }}
+                    onClick={(e) => { e.stopPropagation(); void navigate(`/stories/${row.original.id}`) }}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -231,7 +287,7 @@ export function StoriesPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
-                      onClick={() => { handleOpenEdit(story) }}
+                      onClick={(e) => { e.stopPropagation(); handleOpenEdit(story) }}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -247,7 +303,7 @@ export function StoriesPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg"
-                      onClick={() => { setArchiveDialogId(story.id) }}
+                      onClick={(e) => { e.stopPropagation(); setArchiveDialogId(story.id) }}
                     >
                       <Archive className="h-4 w-4" />
                     </Button>
@@ -261,7 +317,7 @@ export function StoriesPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg"
-                      onClick={() => { handleRestore(story.id) }}
+                      onClick={(e) => { e.stopPropagation(); handleRestore(story.id) }}
                     >
                       <RotateCcw className="h-4 w-4" />
                     </Button>
@@ -274,19 +330,19 @@ export function StoriesPage() {
         )
       },
     },
-  ], [navigate, handleOpenEdit, handleRestore])
+  ], [navigate, handleOpenEdit, handleRestore, epics])
 
   const table = useReactTable({
-    data: filteredStories,
+    data: paginatedStories,
     columns,
     getCoreRowModel: getCoreRowModel(),
   })
 
   return (
-    <div className="h-full flex flex-col p-8 overflow-hidden bg-background">
-      <Breadcrumbs items={[{ label: 'Historias' }]} />
-      {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 shrink-0">
+    <div className="h-full overflow-hidden flex flex-col p-8 space-y-6">
+      <Breadcrumbs items={[{ label: 'Historias', href: '/stories' }]} />
+      
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="grid place-items-center h-10 w-10 rounded-xl bg-primary/10 border border-primary/20">
@@ -296,19 +352,11 @@ export function StoriesPage() {
               Historias
             </h1>
           </div>
-          <p className="text-sm font-medium text-muted-foreground max-w-xl pl-13">
+          <p className="text-sm font-medium text-muted-foreground max-w-xl">
             Gestiona tus User Stories de Jira y sus sub-tareas asociadas.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs font-bold"
-            onClick={() => { setShowArchived(!showArchived) }}
-          >
-            {showArchived ? 'Ver Activas' : 'Ver Eliminadas'}
-          </Button>
           <Button
             size="lg"
             className="shrink-0 h-11 px-6 rounded-xl font-bold shadow-lg shadow-primary/25 transition-all active:scale-95"
@@ -319,18 +367,57 @@ export function StoriesPage() {
         </div>
       </header>
 
+      {/* Filters/Search */}
+      <div className="flex flex-col md:flex-row gap-4 px-1">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+          <Input 
+            placeholder="Buscar por código o título..." 
+            value={search}
+            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+            className="pl-11 h-12 bg-card/50 border-border/50 rounded-2xl focus:ring-primary/20 transition-all font-medium"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Select value={epicFilter} onValueChange={(v) => { setEpicFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-[200px] h-12 rounded-2xl bg-card border-border/50 font-bold text-xs uppercase tracking-widest">
+               <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+               <SelectValue placeholder="Filtrar por Épica" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border-border rounded-xl font-bold">
+              <SelectItem value="all" className="uppercase tracking-widest text-[10px]">Todas las Épicas</SelectItem>
+              {epics.map(e => (
+                <SelectItem key={e.id} value={e.id} className="text-xs">{e.code}: {e.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            className={cn(
+              "h-12 rounded-2xl border-border/50 px-5 text-xs font-black uppercase tracking-widest transition-all",
+              showArchived ? "bg-primary/20 text-primary border-primary/30" : "text-muted-foreground hover:bg-secondary"
+            )}
+            onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            {showArchived ? 'Activas' : 'Archivadas'}
+          </Button>
+        </div>
+      </div>
+
       {/* Table */}
-      <div className="flex-1 overflow-hidden flex flex-col rounded-2xl border border-border bg-card shadow-2xl shadow-black/20">
+      <div className="flex-1 overflow-hidden flex flex-col rounded-3xl border border-border/50 bg-card/50 backdrop-blur-sm shadow-2xl">
         <div className="flex-1 overflow-auto">
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="stories-list">
               {(provided) => (
                 <Table>
-                  <TableHeader className="bg-muted/40 sticky top-0 z-10 backdrop-blur-xl border-b border-border">
+                  <TableHeader className="bg-muted/40 sticky top-0 z-10 backdrop-blur-xl border-b border-border/50">
                     {table.getHeaderGroups().map((headerGroup) => (
                       <TableRow key={headerGroup.id} className="border-none hover:bg-transparent">
                         {headerGroup.headers.map((header) => (
-                          <TableHead key={header.id} className="h-11 text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap bg-transparent px-5">
+                          <TableHead key={header.id} className="h-12 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70 whitespace-nowrap bg-transparent px-5">
                             {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                           </TableHead>
                         ))}
@@ -340,17 +427,20 @@ export function StoriesPage() {
                   <TableBody {...provided.droppableProps} ref={provided.innerRef}>
                     {table.getRowModel().rows.length ? (
                       table.getRowModel().rows.map((row) => (
-                        <Draggable key={row.original.id} draggableId={row.original.id} index={row.index}>
+                        <Draggable key={row.original.id} draggableId={row.original.id} index={row.index} isDragDisabled={epicFilter !== 'all' || search !== ''}>
                           {(provided, snapshot) => (
                             <TableRow
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className={`group border-b border-border hover:bg-secondary/40 transition-colors cursor-pointer ${snapshot.isDragging ? 'bg-secondary/60 shadow-lg' : ''}`}
-                              onDoubleClick={() => { void navigate(`/stories/${row.original.id}`) }}
+                              className={cn(
+                                "group border-b border-border/40 hover:bg-primary/5 transition-all cursor-pointer",
+                                snapshot.isDragging && "bg-primary/10 shadow-lg scale-[1.01]"
+                              )}
+                              onClick={() => { void navigate(`/stories/${row.original.id}`) }}
                             >
                               {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id} className="py-3 px-5 align-middle border-none">
+                                <TableCell key={cell.id} className="py-4 px-5 align-middle border-none">
                                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                 </TableCell>
                               ))}
@@ -360,15 +450,20 @@ export function StoriesPage() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={columns.length} className="h-48 text-center border-none">
-                          <div className="flex flex-col items-center justify-center text-muted-foreground space-y-3">
-                            <BookOpen className="h-8 w-8 opacity-20" />
-                            <p className="text-sm font-medium">
-                              {showArchived ? 'No hay historias eliminadas.' : 'No hay historias creadas todavía.'}
-                            </p>
-                            {!showArchived && (
-                              <Button variant="outline" size="sm" onClick={() => { setIsCreateOpen(true) }} className="mt-2 text-xs font-bold rounded-lg">
-                                Crear la primera
+                        <TableCell colSpan={columns.length} className="h-64 text-center border-none">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground space-y-4">
+                            <div className="p-4 rounded-3xl bg-muted/20">
+                              <BookOpen className="h-10 w-10 opacity-30" />
+                            </div>
+                            <div>
+                               <p className="text-base font-black tracking-tight">Historias no encontradas</p>
+                               <p className="text-xs font-medium opacity-60">
+                                 {search ? `No hay resultados para "${search}"` : (showArchived ? 'No hay historias archivadas.' : 'No hay historias todavía.')}
+                               </p>
+                            </div>
+                            {!showArchived && !search && (
+                              <Button variant="outline" size="sm" onClick={() => { setIsCreateOpen(true) }} className="mt-2 text-[10px] font-black uppercase tracking-widest rounded-xl px-6 h-10">
+                                Lanzar Primera Historia
                               </Button>
                             )}
                           </div>
@@ -382,9 +477,18 @@ export function StoriesPage() {
             </Droppable>
           </DragDropContext>
         </div>
+
+        {/* Pagination Controls */}
+        <div className="p-6 border-t border-border/40 bg-muted/10">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
 
-      {/* Create Dialog */}
+      {/* Dialogs */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-lg border-border bg-popover shadow-2xl rounded-2xl">
           <DialogHeader>
@@ -393,129 +497,107 @@ export function StoriesPage() {
               Nueva Historia
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground ml-4">
-              Crea una User Story para agrupar sub-tareas. El código debe coincidir con Jira.
+              Crea una User Story para agrupar sub-tareas.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Código Jira *
-                </Label>
-                <Input
-                  placeholder="PROJ-1234"
-                  value={formCode}
-                  onChange={(e) => { setFormCode(e.target.value) }}
-                  className="font-mono"
-                />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Código Jira *</Label>
+                <Input placeholder="PROJ-1" value={formCode} onChange={(e) => { setFormCode(e.target.value.toUpperCase()) }} />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Módulo *
-                </Label>
-                <Input
-                  placeholder="Autenticación, Dashboard..."
-                  value={formModule}
-                  onChange={(e) => { setFormModule(e.target.value) }}
-                />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Módulo *</Label>
+                <Input placeholder="Auth" value={formModule} onChange={(e) => { setFormModule(e.target.value) }} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Título de la Historia *
-              </Label>
-              <Input
-                placeholder="Como usuario quiero..."
-                value={formTitle}
-                onChange={(e) => { setFormTitle(e.target.value) }}
-              />
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Título *</Label>
+              <Input placeholder="Título de la historia" value={formTitle} onChange={(e) => { setFormTitle(e.target.value) }} />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Descripción (opcional)
-              </Label>
-              <Textarea
-                placeholder="Contexto adicional..."
-                value={formDesc}
-                onChange={(e) => { setFormDesc(e.target.value) }}
-                className="min-h-[80px] resize-none"
-              />
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Épica</Label>
+              <Select value={formEpicId} onValueChange={(v) => { setFormEpicId(v) }}>
+                <SelectTrigger className="bg-secondary/30 border-none font-medium h-10">
+                  <SelectValue placeholder="Sin Épica" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-popover">
+                  <SelectItem value="none">Sin Épica</SelectItem>
+                  {epics.map((epic) => (
+                    <SelectItem key={epic.id} value={epic.id} className="text-xs">
+                      {epic.code}: {epic.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => { setIsCreateOpen(false) }}>Cancelar</Button>
-            <Button onClick={handleCreate} className="font-bold">
-              <Plus className="mr-2 h-4 w-4" /> Crear Historia
-            </Button>
+            <Button onClick={handleCreate} className="font-bold">Crear Historia</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={!!editStoryId} onOpenChange={(open) => { if (!open) setEditStoryId(null) }}>
-        <DialogContent className="max-w-2xl border-border bg-popover shadow-2xl rounded-2xl">
-          <div className="p-6 space-y-6">
+        <DialogContent className="max-w-xl border-border bg-popover shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+               <Edit className="h-5 w-5 text-primary" /> Editar Historia
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Código Jira</Label>
+                <Input value={editForm.code} onChange={(e) => { setEditForm(p => ({ ...p, code: e.target.value.toUpperCase() })) }} />
+              </div>
+              <div className="space-y-2">
+                <Label>Módulo</Label>
+                <Input value={editForm.module} onChange={(e) => { setEditForm(p => ({ ...p, module: e.target.value })) }} />
+              </div>
+            </div>
             <div className="space-y-2">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Edit className="h-5 w-5 text-primary" /> Editar Historia
-              </h2>
-              <p className="text-sm text-muted-foreground">Modifica los datos de la User Story.</p>
+              <Label>Título</Label>
+              <Input value={editForm.title} onChange={(e) => { setEditForm(p => ({ ...p, title: e.target.value })) }} />
             </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Código Jira</Label>
-                  <Input 
-                    value={editForm.code} 
-                    onChange={e => { setEditForm(prev => ({ ...prev, code: e.target.value.toUpperCase() })) }}
-                    placeholder="PROJ-123"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Módulo</Label>
-                  <Input 
-                    value={editForm.module} 
-                    onChange={e => { setEditForm(prev => ({ ...prev, module: e.target.value })) }}
-                    placeholder="Compras"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Título de la Historia</Label>
-                <Input 
-                  value={editForm.title} 
-                  onChange={e => { setEditForm(prev => ({ ...prev, title: e.target.value })) }}
-                  placeholder="Ej: Gestionar órdenes de compra"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Descripción</Label>
-                <Textarea 
-                  value={editForm.description} 
-                  onChange={e => { setEditForm(prev => ({ ...prev, description: e.target.value })) }}
-                  placeholder="Descripción opcional..."
-                  className="min-h-[100px] bg-background"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Épica</Label>
+              <Select value={editForm.epicId || 'none'} onValueChange={(v) => { setEditForm(p => ({ ...p, epicId: v === 'none' ? '' : v })) }}>
+                <SelectTrigger className="bg-secondary/30 border-none">
+                  <SelectValue placeholder="Sin Épica" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-popover">
+                  <SelectItem value="none">Sin Épica</SelectItem>
+                  {epics.map(epic => (
+                    <SelectItem key={epic.id} value={epic.id} className="text-xs">
+                      {epic.code}: {epic.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={() => { setEditStoryId(null) }}>Cancelar</Button>
-              <Button onClick={handleUpdate} className="font-bold">Guardar Cambios</Button>
-            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button variant="outline" onClick={() => { setEditStoryId(null) }}>Cancelar</Button>
+            <Button onClick={() => { setEditCommentDialog(true) }} className="font-bold">Guardar Cambios</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Archive Comment Dialog */}
+      <CommentDialog
+        open={editCommentDialog}
+        onOpenChange={setEditCommentDialog}
+        title="Justificar Cambio"
+        description="Explica brevemente por qué estás modificando los metadatos de esta historia."
+        onConfirm={handleUpdate}
+      />
+
       <CommentDialog
         open={!!archiveDialogId}
-        onOpenChange={(open) => { if (!open) setArchiveDialogId(null) }}
+        onOpenChange={(o) => { if (!o) setArchiveDialogId(null) }}
         title="Eliminar Historia"
         description="Esta historia pasará a estado eliminado (papelera). Podrás restaurarla después."
         variant="warning"

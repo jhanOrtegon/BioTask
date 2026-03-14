@@ -12,6 +12,7 @@ export interface SectionData {
 export type TimeLog = {
   startedAt: string
   endedAt?: string
+  memberId?: string
 }
 
 // ── Checklist Item ──
@@ -68,6 +69,7 @@ export interface Story {
   module: string
   description?: string
   status: 'active' | 'archived'
+  epicId?: string
   tasks: TrackedTask[]
   auditLog: AuditEntry[]
   createdAt: string

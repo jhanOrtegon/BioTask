@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStoriesStore } from '@/features/stories/store'
 import type { TrackedTask, Story } from '@/features/stories/types'
@@ -41,20 +41,24 @@ import { getTaskAlertStatus } from '@/shared/utils/task-utils'
 import { cn } from '@/shared/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip'
 import { AlertCircle, AlertTriangle, Info, Users as UsersIcon, Search } from 'lucide-react'
-import { useQueryState, parseAsBoolean } from 'nuqs'
 import { Input } from '@/shared/ui/input'
+import { Pagination } from '@/shared/ui/pagination'
 
 export function TasksPage() {
   const navigate = useNavigate()
   const { stories, updateTask, stopTaskTimer, archiveTask } = useStoriesStore()
   const { getMemberById } = useTeamStore()
   
-  const [selectedStoryId, setSelectedStoryId] = useQueryState('story', { defaultValue: 'all' })
-  const [showArchived, setShowArchived] = useQueryState('archived', parseAsBoolean.withDefault(false))
-  const [search, setSearch] = useQueryState('q', { defaultValue: '' })
+  const [selectedStoryId, setSelectedStoryId] = useState('all')
+  const [showArchived, setShowArchived] = useState(false)
+  const [search, setSearch] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   const [archiveDialog, setArchiveDialog] = useState<{ taskId: string; title: string; storyId: string } | null>(null)
   const [viewTask, setViewTask] = useState<TrackedTask | null>(null)
+  const [editTask, setEditTask] = useState<TrackedTask | null>(null)
+  const [pendingUpdate, setPendingUpdate] = useState<{ taskId: string; storyId: string; data: Partial<TrackedTask> } | null>(null)
 
   const activeStories = useMemo(() => stories.filter(s => s.status !== 'archived'), [stories])
   
@@ -84,10 +88,13 @@ export function TasksPage() {
     return tasks.filter(t => showArchived ? t.status === 'archived' : t.status !== 'archived')
   }, [stories, selectedStoryId, showArchived, search])
 
-  const findStoryIdForTask = useCallback((taskId: string) => {
-    const story = stories.find(s => s.tasks.some(t => t.id === taskId))
-    return story?.id
-  }, [stories])
+  const totalPages = Math.ceil(allTasks.length / ITEMS_PER_PAGE)
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return allTasks.slice(start, start + ITEMS_PER_PAGE)
+  }, [allTasks, currentPage])
+
+
 
   const columns = useMemo<ColumnDef<TrackedTask & { storyData: Story }>[]>(() => [
     {
@@ -241,20 +248,15 @@ export function TasksPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+              disabled={task.status === 'in_progress' || task.status === 'completed'}
+              className={cn(
+                "h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg",
+                (task.status === 'in_progress' || task.status === 'completed') && "opacity-20 cursor-not-allowed"
+              )}
               onClick={() => { 
-                // Deep recovery strategy
-                const storyDataId = (task as { storyData?: { id: string } }).storyData?.id
-                const sId = storyDataId || task.storyId || findStoryIdForTask(task.id)
-                
-                if (sId && task.id) {
-                  void navigate(`/editor/${sId}/${task.id}`)
-                } else {
-                  toast.error("Error: ID de tarea o historia no encontrado")
-                  console.error("Missing IDs on Tasks List after deep recovery:", { storyId: sId, taskId: task.id, task })
-                }
+                setEditTask(task)
               }}
-              title="Editar Tarea"
+              title={task.status === 'pending' ? "Editar Tarea" : "No se puede editar una tarea en curso o finalizada"}
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -271,10 +273,10 @@ export function TasksPage() {
         )
       },
     },
-  ], [navigate, updateTask, stopTaskTimer, findStoryIdForTask, getMemberById])
+  ], [navigate, updateTask, stopTaskTimer, getMemberById])
 
   const table = useReactTable({
-    data: allTasks,
+    data: paginatedTasks,
     columns,
     getCoreRowModel: getCoreRowModel(),
   })
@@ -305,11 +307,11 @@ export function TasksPage() {
               placeholder="Buscar por título o código..." 
               className="pl-10 h-10 rounded-xl bg-secondary/50 border-primary/10 focus:ring-primary/20"
               value={search}
-              onChange={(e) => { void setSearch(e.target.value || null) }}
+              onChange={(e) => { setSearch(e.target.value) }}
             />
           </div>
 
-          <Select value={selectedStoryId} onValueChange={(v) => { void setSelectedStoryId(v) }}>
+          <Select value={selectedStoryId} onValueChange={(v) => { setSelectedStoryId(v) }}>
             <SelectTrigger className="w-full md:w-[250px] h-10 rounded-xl bg-secondary/50 border-primary/10 font-bold text-xs">
               <SelectValue placeholder="Filtrar por Historia" />
             </SelectTrigger>
@@ -327,7 +329,7 @@ export function TasksPage() {
               "h-10 rounded-xl border border-primary/10 px-4 text-xs font-bold transition-all",
               showArchived ? "bg-primary/20 text-primary border-primary/30" : "text-muted-foreground hover:bg-secondary"
             )}
-            onClick={() => { void setShowArchived(!showArchived || null) }}
+            onClick={() => { setShowArchived(!showArchived) }}
           >
             {showArchived ? 'Ocultar Archivadas' : 'Ver Archivadas'}
           </Button>
@@ -378,10 +380,18 @@ export function TasksPage() {
               )}
             </TableBody>
           </Table>
+          
+          <div className="p-6 border-t border-border/40 bg-muted/10 rounded-b-3xl">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </div>
       </div>
       
-      {/* Task Details Dialog */}
+      {/* Task Details Dialog (View) */}
       <Dialog open={!!viewTask} onOpenChange={(open: boolean) => { if (!open) setViewTask(null) }}>
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto border-border bg-popover shadow-2xl rounded-2xl p-0">
           <div className="p-8">
@@ -389,6 +399,60 @@ export function TasksPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Task Edit Dialog */}
+      <Dialog open={!!editTask} onOpenChange={(open: boolean) => { if (!open) setEditTask(null) }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col border-border bg-popover shadow-2xl rounded-2xl p-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-8 pt-6">
+            <div className="flex items-center justify-between mb-6">
+               <div className="flex items-center gap-3">
+                 <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
+                   <Edit className="h-5 w-5 text-primary" />
+                 </div>
+                 <div>
+                   <h2 className="text-xl font-black">Editor de Tarea</h2>
+                   <p className="text-xs text-muted-foreground font-medium">Modifica los detalles de la tarea seleccionada.</p>
+                 </div>
+               </div>
+               <Button onClick={() => {
+                 if (editTask) {
+                   setPendingUpdate({
+                     taskId: editTask.id,
+                     storyId: editTask.storyId,
+                     data: editTask // En una app real, aquí tendríamos el estado actual del editor
+                   })
+                 }
+               }} className="rounded-xl font-bold px-8">Guardar Cambios</Button>
+            </div>
+            
+            {editTask && (
+              <DynamicTaskEditor 
+                task={editTask as unknown as TaskDraft} 
+                onUpdate={(updatedData) => {
+                  setEditTask(prev => prev ? ({ ...prev, ...updatedData } as TrackedTask) : null)
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Justification for Update */}
+      {pendingUpdate && (
+        <CommentDialog
+          open={!!pendingUpdate}
+          onOpenChange={(open: boolean) => { if (!open) setPendingUpdate(null) }}
+          title="Justificar Cambio"
+          description="Escribe el motivo del cambio para el registro histórico (Audit Log)."
+          onConfirm={(comment: string) => {
+            const { storyId, taskId, data } = pendingUpdate
+            updateTask(storyId, taskId, data, comment)
+            toast.success('Cambio registrado en auditoría.')
+            setPendingUpdate(null)
+            setEditTask(null)
+          }}
+        />
+      )}
 
       {/* Archive Task Comment Dialog */}
       {archiveDialog && (

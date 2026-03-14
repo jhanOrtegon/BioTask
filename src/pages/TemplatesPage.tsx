@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { useTemplatesStore } from "@/features/templates/store"
 import type { Template } from "@/features/templates/types"
 import { Button } from "@/shared/ui/button"
@@ -28,6 +28,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { Pagination } from "@/shared/ui/pagination"
 
 export function TemplatesPage() {
   const { role } = useAuthStore()
@@ -35,30 +36,32 @@ export function TemplatesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
   const [isReadOnly, setIsReadOnly] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
   
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     if (confirm("¿Estás seguro de que deseas eliminar esta plantilla?")) {
       removeTemplate(id)
     }
-  }
+  }, [removeTemplate])
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = useCallback(() => {
     setEditingTemplate(null)
     setIsReadOnly(false)
     setIsDialogOpen(true)
-  }
+  }, [])
 
-  const handleOpenEdit = (template: Template) => {
+  const handleOpenEdit = useCallback((template: Template) => {
     setEditingTemplate(template)
     setIsReadOnly(false)
     setIsDialogOpen(true)
-  }
+  }, [])
 
-  const handleOpenView = (template: Template) => {
+  const handleOpenView = useCallback((template: Template) => {
     setEditingTemplate(template)
     setIsReadOnly(true)
     setIsDialogOpen(true)
-  }
+  }, [])
 
   const handleSubmit = (data: Omit<Template, 'id' | 'createdAt'>) => {
     if (editingTemplate) {
@@ -167,8 +170,14 @@ export function TemplatesPage() {
 
   const finalColumns = columns
 
+  const totalPages = Math.ceil(templates.length / ITEMS_PER_PAGE)
+  const paginatedTemplates = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return templates.slice(start, start + ITEMS_PER_PAGE)
+  }, [templates, currentPage])
+
   const table = useReactTable({
-    data: templates,
+    data: paginatedTemplates,
     columns: finalColumns,
     getCoreRowModel: getCoreRowModel(),
   })
@@ -255,6 +264,14 @@ export function TemplatesPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        
+        <div className="p-6 border-t border-border/40 bg-muted/10">
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
