@@ -1,0 +1,51 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  severity: 'info' | 'warning' | 'error' | 'success';
+  timestamp: string;
+  read: boolean;
+}
+
+interface NotificationState {
+  notifications: Notification[];
+  addNotification: (notif: Omit<Notification, 'id' | 'read' | 'timestamp'>) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  clearAll: () => void;
+}
+
+export const useNotificationStore = create<NotificationState>()(
+  persist(
+    (set) => ({
+      notifications: [],
+      addNotification: (notif) => set((state) => ({
+        notifications: [
+          {
+            ...notif,
+            id: Math.random().toString(36).substring(2, 9),
+            read: false,
+            timestamp: new Date().toISOString()
+          },
+          ...state.notifications
+        ].slice(0, 50) // Keep last 50
+      })),
+      markAsRead: (id) => set((state) => ({
+        notifications: state.notifications.map((n) => 
+          n.id === id ? { ...n, read: true } : n
+        )
+      })),
+      markAllAsRead: () => set((state) => ({
+        notifications: state.notifications.map((n) => ({ ...n, read: true }))
+      })),
+      clearAll: () => set({ notifications: [] }),
+    }),
+    {
+      name: 'biopulse-notifications',
+    }
+  )
+)

@@ -13,6 +13,10 @@ import { SprintsPage } from '@/pages/SprintsPage'
 import { SprintPlannerPage } from '@/pages/SprintPlannerPage'
 import { TeamPage } from '@/pages/TeamPage'
 import { EpicsPage } from '@/pages/EpicsPage'
+import { AnalyticsPage } from '@/pages/AnalyticsPage'
+import { HealthPage } from '@/pages/analytics/HealthPage'
+import { LoadPage } from '@/pages/analytics/LoadPage'
+import { PerformancePage } from '@/pages/analytics/PerformancePage'
 import { MainLayout } from '@/shared/ui/main-layout'
 import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/shared/ui/tooltip'
@@ -55,7 +59,13 @@ function App() {
                   <Route path="board" element={<BoardPage />} />
                   <Route path="planner" element={<SprintPlannerPage />} />
                   <Route path="team" element={<TeamPage />} />
-                </Route>
+                   
+                   {/* Rutas de Reportes */}
+                   <Route path="analytics" element={<AnalyticsPage />} />
+                   <Route path="analytics/health" element={<HealthPage />} />
+                   <Route path="analytics/load" element={<LoadPage />} />
+                   <Route path="analytics/performance" element={<PerformancePage />} />
+                 </Route>
               </Route>
             </Route>
 
