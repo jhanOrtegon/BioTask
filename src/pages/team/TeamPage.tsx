@@ -12,18 +12,19 @@ import {
 import { Badge } from '@/shared/components/badge'
 import { toast } from 'sonner'
 import { Pagination } from '@/shared/components/pagination'
+import { Progress } from '@/shared/components/progress'
 
 import { TeamHeader } from './components/TeamHeader'
 import { TeamFilters } from './components/TeamFilters'
 import { TeamMemberCard } from './components/TeamMemberCard'
 import { MemberDialog } from './components/MemberDialog'
 
-const roleConfig: Record<TeamRole, { label: string; icon: React.ElementType; color: string; bg: string }> = {
- admin: { label: 'Admin', icon: ShieldCheck, color: 'text-rose-500', bg: 'bg-rose-500/10' },
- lead: { label: 'Lead', icon: ShieldAlert, color: 'text-amber-500', bg: 'bg-amber-500/10' },
- developer: { label: 'Dev', icon: ShieldCheck, color: 'text-primary', bg: 'bg-primary/10' },
- qa: { label: 'QA', icon: ShieldCheck, color: 'text-blue-500', bg: 'bg-blue-500/10' },
- designer: { label: 'Design', icon: ShieldQuestion, color: 'text-purple-500', bg: 'bg-purple-500/10' }
+const roleConfig: Record<TeamRole, { label: string; icon: React.ElementType; color: string; bg: string; strip: string }> = {
+ admin: { label: 'Admin', icon: ShieldCheck, color: 'text-rose-500', bg: 'bg-rose-500/10', strip: 'bg-rose-500' },
+ lead: { label: 'Lead', icon: ShieldAlert, color: 'text-amber-500', bg: 'bg-amber-500/10', strip: 'bg-amber-500' },
+ developer: { label: 'Dev', icon: ShieldCheck, color: 'text-primary', bg: 'bg-primary/10', strip: 'bg-primary' },
+ qa: { label: 'QA', icon: ShieldCheck, color: 'text-blue-500', bg: 'bg-blue-500/10', strip: 'bg-blue-500' },
+ designer: { label: 'Design', icon: ShieldQuestion, color: 'text-purple-500', bg: 'bg-purple-500/10', strip: 'bg-purple-500' }
 }
 
 export function TeamPage() {
@@ -57,20 +58,18 @@ export function TeamPage() {
 
  const groupedData = useMemo(() => {
  if (groupBy === 'role') {
- return members.reduce<Record<string, TeamMember[]>>((acc, m) => {
- const key = m.role
- if (!acc[key]) acc[key] = []
- acc[key].push(m)
- return acc
- }, {})
+	 return members.reduce<Record<string, TeamMember[]>>((acc, m) => {
+		 const key = m.role;
+		 (acc[key] = acc[key] ?? []).push(m);
+		 return acc;
+	 }, {});
  }
  if (groupBy === 'specialty') {
- return members.reduce<Record<string, TeamMember[]>>((acc, m) => {
- const key = m.specialty || 'General'
- if (!acc[key]) acc[key] = []
- acc[key].push(m)
- return acc
- }, {})
+	 return members.reduce<Record<string, TeamMember[]>>((acc, m) => {
+		 const key = m.specialty || 'General';
+		 (acc[key] = acc[key] ?? []).push(m);
+		 return acc;
+	 }, {});
  }
  return { 'Talento Global': paginatedMembers }
  }, [paginatedMembers, groupBy, members])
@@ -115,52 +114,61 @@ export function TeamPage() {
  }
 
  return (
- <div className="min-h-full bg-background p-4 md:p-6 lg:p-8 animate-in fade-in duration-300 relative">
- <div className="max-w-[1600px] mx-auto w-full space-y-8 pb-20">
+	<div className="min-h-full bg-background p-4 md:p-6 lg:p-8 animate-in fade-in duration-300 relative">
+	<div className="max-w-[1600px] mx-auto w-full space-y-6 pb-8">
  <TeamHeader 
  memberCount={members.length} 
  onAddMember={handleOpenAdd} 
  />
 
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
- <div className="relative group bg-card border border-border/40 p-6 rounded-xl overflow-hidden transition-all hover:border-primary/20 shadow-sm">
- <div className="relative z-10 flex justify-between items-start">
- <div className="space-y-1.5">
- <p className="text-xs font-medium text-muted-foreground/60">Total Miembros</p>
- <p className="text-3xl font-semibold text-foreground lining-nums">{members.length}</p>
- </div>
- <div className="grid place-items-center h-10 w-10 rounded-xl bg-primary/5 text-primary border border-primary/10 group-hover:scale-105 transition-transform duration-500">
- <Users className="h-5 w-5 opacity-70" />
- </div>
- </div>
- <div className="absolute bottom-0 left-0 h-1 w-full bg-primary/20" />
- </div>
-
- <div className="relative group bg-card border border-border/40 p-6 rounded-xl overflow-hidden transition-all hover:border-emerald-500/20 shadow-sm">
- <div className="relative z-10 flex justify-between items-start">
- <div className="space-y-1.5">
- <p className="text-xs font-medium text-emerald-600/60">Activos</p>
- <p className="text-3xl font-semibold text-foreground lining-nums">{members.filter(m => m.active).length}</p>
- </div>
- <div className="grid place-items-center h-10 w-10 rounded-xl bg-emerald-500/5 text-emerald-500 border border-emerald-500/10 group-hover:scale-105 transition-transform duration-500">
- <ShieldCheck className="h-5 w-5 opacity-70" />
- </div>
- </div>
- <div className="absolute bottom-0 left-0 h-1 w-full bg-emerald-500/20" />
- </div>
-
- <div className="relative group bg-card border border-border/40 p-6 rounded-xl overflow-hidden transition-all hover:border-rose-500/20 shadow-sm">
- <div className="relative z-10 flex justify-between items-start">
- <div className="space-y-1.5">
- <p className="text-xs font-medium text-rose-600/60">Roles Definidos</p>
- <p className="text-3xl font-semibold text-foreground lining-nums">{new Set(members.map(m => m.role)).size}</p>
- </div>
- <div className="grid place-items-center h-10 w-10 rounded-xl bg-rose-500/5 text-rose-500 border border-rose-500/10 group-hover:scale-105 transition-transform duration-500">
- <ShieldAlert className="h-5 w-5 opacity-70" />
- </div>
- </div>
- <div className="absolute bottom-0 left-0 h-1 w-full bg-rose-500/20" />
- </div>
+	 {/* Total Miembros */}
+	 <div className="relative group bg-card border border-border/40 p-6 rounded-xl overflow-hidden transition-all hover:border-primary/20 shadow-sm">
+		 <div className="flex justify-between items-start">
+			 <div className="space-y-1.5">
+				 <p className="text-xs font-medium text-muted-foreground/60">Total Miembros</p>
+				 <p className="text-3xl font-semibold text-foreground lining-nums">{members.length}</p>
+			 </div>
+			 <div className="grid place-items-center h-10 w-10 rounded-xl bg-primary/5 text-primary border border-primary/10 group-hover:scale-105 transition-transform duration-500">
+				 <Users className="h-5 w-5 opacity-70" />
+			 </div>
+		 </div>
+		 <div className="mt-4 h-1 w-full rounded-full bg-primary/15 overflow-hidden">
+			 <Progress value={Math.min(100, members.length * 10)} className="h-1 mt-4 bg-primary/15" />
+		 </div>
+	 </div>
+	 {/* Activos */}
+	 <div className="relative group bg-card border border-border/40 p-6 rounded-xl overflow-hidden transition-all hover:border-emerald-500/20 shadow-sm">
+		 <div className="flex justify-between items-start">
+			 <div className="space-y-1.5">
+				 <p className="text-xs font-medium text-emerald-600/60">Activos</p>
+				 <p className="text-3xl font-semibold text-foreground lining-nums">{members.filter(m => m.active).length}</p>
+			 </div>
+			 <div className="grid place-items-center h-10 w-10 rounded-xl bg-emerald-500/5 text-emerald-500 border border-emerald-500/10 group-hover:scale-105 transition-transform duration-500">
+				 <ShieldCheck className="h-5 w-5 opacity-70" />
+			 </div>
+		 </div>
+		 <div className="mt-4 h-1 w-full rounded-full bg-emerald-500/15 overflow-hidden">
+			 <Progress value={members.length > 0 ? Math.round((members.filter(m => m.active).length / members.length) * 100) : 0} className="h-1 mt-4 bg-emerald-500/15 [&>div]:bg-emerald-500" />
+		 </div>
+	 </div>
+	 {/* Roles Definidos */}
+	 <div className="relative group bg-card border border-border/40 p-6 rounded-xl overflow-hidden transition-all hover:border-rose-500/20 shadow-sm">
+		 <div className="flex justify-between items-start">
+			 <div className="space-y-1.5">
+				 <p className="text-xs font-medium text-rose-600/60">Roles Definidos</p>
+				 <p className="text-3xl font-semibold text-foreground lining-nums">{new Set(members.map(m => m.role)).size}</p>
+			 </div>
+			 <div className="grid place-items-center h-10 w-10 rounded-xl bg-rose-500/5 text-rose-500 border border-rose-500/10 group-hover:scale-105 transition-transform duration-500">
+				 <ShieldAlert className="h-5 w-5 opacity-70" />
+			 </div>
+		 </div>
+		 <div className="mt-4 flex gap-1">
+			 {Object.values(roleConfig).map((r, i) => (
+				 <div key={i} className={`h-1 flex-1 rounded-full ${r.strip} opacity-40`} />
+			 ))}
+		 </div>
+	 </div>
  </div>
 
  <TeamFilters 

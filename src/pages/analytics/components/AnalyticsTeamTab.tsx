@@ -31,7 +31,7 @@ export function AnalyticsTeamTab({
  <Card className="border-border/40 bg-card rounded-xl overflow-hidden shadow-lg">
  <CardHeader className="p-6 border-b border-border/70">
  <CardTitle className="text-lg font-semibold italic">Rendimiento de Equipo</CardTitle>
- <CardDescription className="text-xs font-bold text-muted-foreground/60">Comparativa de carga y efectividad</CardDescription>
+ <CardDescription className="text-xs font-medium text-muted-foreground/60">Comparativa de carga y efectividad</CardDescription>
  </CardHeader>
 
  {/* Hall of Fame - Top 3 */}
@@ -61,7 +61,7 @@ export function AnalyticsTeamTab({
  </div>
  <div className="space-y-3 relative z-10">
  <div className="flex justify-between items-end">
- <span className="text-xs font-semibold text-muted-foreground uppercase opacity-60">Eficiencia</span>
+ <span className="text-xs font-semibold text-muted-foreground opacity-60">Eficiencia</span>
  <span className="text-xs font-semibold text-primary">{Math.round((dev.completed / (dev.completed + dev.active || 1)) * 100)}%</span>
  </div>
  <div className="h-1 w-full bg-muted/50 rounded-full overflow-hidden">
@@ -70,11 +70,11 @@ export function AnalyticsTeamTab({
  <div className="flex justify-between">
  <div className="text-left">
  <span className="block text-sm font-semibold">{dev.hours.toFixed(1)}h</span>
- <span className="text-xs font-bold text-muted-foreground uppercase opacity-40">Horas</span>
+ <span className="text-xs font-semibold text-muted-foreground opacity-40">Horas</span>
  </div>
  <div className="text-right">
  <span className="block text-sm font-semibold text-emerald-500">{dev.completed}</span>
- <span className="text-xs font-bold text-muted-foreground uppercase opacity-40">Hecho</span>
+ <span className="text-xs font-semibold text-muted-foreground opacity-40">Hecho</span>
  </div>
  </div>
  </div>
@@ -102,12 +102,12 @@ export function AnalyticsTeamTab({
  <img src={dev.avatar} className="h-10 w-10 rounded-xl border-2 border-primary/20 shadow-lg" alt="" />
  <div>
  <p className="text-sm font-semibold">{dev.name}</p>
- <Badge variant="outline" className="text-xs font-bold mt-1 border-primary/20 text-primary">Desarrollador Core</Badge>
+ <Badge variant="outline" className="text-xs font-semibold mt-1 border-primary/20 text-primary">Desarrollador Core</Badge>
  </div>
  </td>
  <td className="px-8 py-6 text-center">
  <span className="text-lg font-semibold">{dev.hours.toFixed(1)}</span>
- <span className="text-xs text-muted-foreground block font-bold tracking-tighter">Horas Reales</span>
+ <span className="text-xs text-muted-foreground block font-medium">Horas Reales</span>
  </td>
  <td className="px-8 py-6 min-w-[200px]">
  <div className="flex items-center gap-3">
@@ -123,8 +123,8 @@ export function AnalyticsTeamTab({
  <td className="px-8 py-6 text-right pr-8">
  <div className="flex items-center justify-end gap-2">
  <ArrowUpRight className="h-4 w-4 text-emerald-500" />
- <span className="text-sm font-bold">{dev.completed} / {dev.completed + dev.active}</span>
- <span className="text-xs font-semibold text-muted-foreground uppercase opacity-40">Tareas</span>
+ <span className="text-sm font-semibold">{dev.completed} / {dev.completed + dev.active}</span>
+ <span className="text-xs font-semibold text-muted-foreground opacity-40">Tareas</span>
  </div>
  </td>
  </tr>

@@ -30,7 +30,7 @@ export function LoadCharts({ devLoadData, moduleLoadData }: LoadChartsProps) {
  <CardHeader className="p-0 mb-10">
  <div className="space-y-1">
  <CardTitle className="text-2xl font-semibold italic">Saturación por Dev</CardTitle>
- <CardDescription className="text-xs font-bold text-primary/60">Horas registradas en el sprint actual</CardDescription>
+ <CardDescription className="text-xs font-medium text-primary/60">Horas registradas en el sprint actual</CardDescription>
  </div>
  </CardHeader>
  <div className="h-[300px] w-full">
@@ -51,7 +51,7 @@ export function LoadCharts({ devLoadData, moduleLoadData }: LoadChartsProps) {
  <CardHeader className="p-0 mb-10">
  <div className="space-y-1">
  <CardTitle className="text-2xl font-semibold italic">Distancia por Módulo</CardTitle>
- <CardDescription className="text-xs font-bold text-primary/60">Inversión técnica acumulada</CardDescription>
+ <CardDescription className="text-xs font-medium text-primary/60">Inversión técnica acumulada</CardDescription>
  </div>
  </CardHeader>
  <div className="h-[300px] w-full relative">

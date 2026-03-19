@@ -16,7 +16,7 @@ export function AnalyticsVelocityTab({ velocityData }: AnalyticsVelocityTabProps
  <Card className="border-border/40 bg-card rounded-xl overflow-hidden shadow-xl">
  <CardHeader className="p-8 border-b border-border/70">
  <CardTitle className="text-2xl font-semibold">Velocidad BioTask</CardTitle>
- <CardDescription className="text-xs font-bold text-muted-foreground">Consistencia técnica a través de los sprints</CardDescription>
+ <CardDescription className="text-xs font-medium text-muted-foreground">Consistencia técnica a través de los sprints</CardDescription>
  </CardHeader>
  <div className="p-8 h-[450px]">
  <ResponsiveContainer width="100%" height="100%">

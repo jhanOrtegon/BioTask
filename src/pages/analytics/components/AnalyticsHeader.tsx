@@ -26,7 +26,7 @@ export function AnalyticsHeader({
  <div className="space-y-1">
  <Breadcrumbs items={[{ label: 'Reportes' }, { label: 'Centro de Inteligencia' }]} />
  <div className="flex items-center gap-2.5 pt-0.5">
- <h1 className="text-xl font-bold tracking-tight text-foreground">
+ <h1 className="text-xl font-semibold tracking-tight text-foreground">
  Analítica de <span className="text-primary">Rendimiento</span>
  </h1>
  <div className="grid place-items-center h-6 w-6 rounded-lg bg-primary/10 border border-primary/20">

@@ -19,7 +19,7 @@ export function HealthAlerts({ blocked }: HealthAlertsProps) {
  </div>
  <div className="space-y-1">
  <p className="text-[13px] font-semibold text-red-500">Bloqueos Detectados</p>
- <p className="text-sm font-bold text-muted-foreground/70">{blocked} tareas detenidas que afectan la inercia del equipo.</p>
+ <p className="text-sm font-medium text-muted-foreground/70">{blocked} tareas detenidas que afectan la inercia del equipo.</p>
  </div>
  </Card>
  )}
@@ -29,7 +29,7 @@ export function HealthAlerts({ blocked }: HealthAlertsProps) {
  </div>
  <div className="space-y-1">
  <p className="text-[13px] font-semibold text-emerald-500">Validación de Core</p>
- <p className="text-sm font-bold text-muted-foreground/70">La arquitectura mantiene un flujo óptimo de tracking.</p>
+ <p className="text-sm font-medium text-muted-foreground/70">La arquitectura mantiene un flujo óptimo de tracking.</p>
  </div>
  </Card>
  </div>

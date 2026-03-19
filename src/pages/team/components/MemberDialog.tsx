@@ -66,21 +66,21 @@ export function MemberDialog({
  <div className="space-y-5 py-6">
  <div className="space-y-2">
  <Label className="text-xs font-semibold text-muted-foreground pl-1">Identidad de Usuario</Label>
- <Input 
- value={name} 
- onChange={(e) => { setName(e.target.value); }} 
- placeholder="Nombre del colaborador"
- className="h-10 bg-muted/20 border-border/50 rounded-xl font-bold text-sm"
- />
+				<Input 
+					value={name} 
+					onChange={(e) => { setName(e.target.value); }} 
+					placeholder="Nombre del colaborador"
+					className="h-10 bg-muted/20 border-border/50 rounded-xl font-medium text-sm"
+				/>
  </div>
  <div className="space-y-2">
  <Label className="text-xs font-semibold text-muted-foreground pl-1">Dirección BioPulse</Label>
- <Input 
- value={email} 
- onChange={(e) => { setEmail(e.target.value); }} 
- placeholder="correo@biotask.com"
- className="h-10 bg-muted/20 border-border/50 rounded-xl font-bold text-sm"
- />
+				<Input 
+					value={email} 
+					onChange={(e) => { setEmail(e.target.value); }} 
+					placeholder="correo@biotask.com"
+					className="h-10 bg-muted/20 border-border/50 rounded-xl font-medium text-sm"
+				/>
  </div>
  <div className="grid grid-cols-2 gap-4">
  <div className="space-y-2">
@@ -100,12 +100,12 @@ export function MemberDialog({
  </div>
  <div className="space-y-2">
  <Label className="text-xs font-semibold text-muted-foreground pl-1">Stack / Tag</Label>
- <Input 
- value={specialty} 
- onChange={(e) => { setSpecialty(e.target.value); }} 
- placeholder="Ej: Backend"
- className="h-10 bg-muted/20 border-border/50 rounded-xl font-bold text-sm"
- />
+				<Input 
+					value={specialty} 
+					onChange={(e) => { setSpecialty(e.target.value); }} 
+					placeholder="Ej: Backend"
+					className="h-10 bg-muted/20 border-border/50 rounded-xl font-medium text-sm"
+				/>
  </div>
  </div>
  </div>

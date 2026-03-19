@@ -98,66 +98,69 @@ export function MemberDetailPage() {
  }, [member, stories])
 
  if (!member || !stats) {
- return (
- <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
- <h2 className="text-2xl font-semibold opacity-40">Talento no encontrado</h2>
- <Button onClick={() => { void navigate('/monitoring/live') }} className="rounded-xl font-semibold uppercase text-xs tracking-wide px-8">
- Regresar al Monitoreo
- </Button>
- </div>
- )
+	 return (
+		 <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+			 <h2 className="text-2xl font-semibold opacity-40">Talento no encontrado</h2>
+			 <Button 
+				 onClick={() => { void navigate('/monitoring/live') }} 
+				 className="rounded-xl font-semibold text-xs px-8"
+				 aria-label="Regresar al Monitoreo"
+				 title="Regresar al Monitoreo"
+			 >
+				 Regresar al Monitoreo
+			 </Button>
+		 </div>
+	 )
  }
 
  const loadFactor = Math.min(100, (stats.todayHours / 8) * 100)
 
  return (
- <div className="min-h-full bg-background p-4 md:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-20">
- <div className="max-w-[1400px] mx-auto space-y-10">
- 
- {/* Superior Navigation */}
- <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
- <div className="space-y-4">
- <Breadcrumbs items={[{ label: 'Monitoreo', href: '/monitoring/live' }, { label: 'Bio-Sincronización', href: '/monitoring/live' }, { label: member.name }]} />
- <div className="flex items-center gap-6">
- <Button 
- variant="outline" 
- size="icon" 
- className="h-12 w-12 rounded-xl border-border/40 hover:bg-secondary/50 transition-all shrink-0"
- onClick={() => { void navigate('/monitoring/live') }}
- >
- <ChevronLeft className="h-6 w-6" />
- </Button>
- <div className="flex items-center gap-5">
- <div className="relative">
- <img src={member.avatarUrl} className="h-20 w-20 rounded-xl border-4 border-background shadow-2xl object-cover" alt="" />
- <div className={cn(
-"absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-background shadow-lg",
- stats.activeTask ?"bg-emerald-500 animate-pulse" : (stats.blockedTask ?"bg-red-500" :"bg-slate-400")
- )} />
- </div>
- <div className="space-y-1">
- <h1 className="text-4xl font-semibold tracking-tight leading-none">{member.name}</h1>
- <div className="flex items-center gap-3">
- <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs font-semibold px-3 py-0.5">
- {member.role}
- </Badge>
- <span className="text-xs font-bold text-muted-foreground opacity-60">{member.specialty}</span>
- </div>
- </div>
- </div>
- </div>
- </div>
-
- <div className="flex items-center gap-4">
- <div className="px-6 py-3 bg-secondary/20 rounded-xl border border-border/40 backdrop-blur-sm">
- <p className="text-xs font-medium text-muted-foreground opacity-60">Status de Red</p>
- <div className="flex items-center gap-2">
- <div className={cn("h-2 w-2 rounded-full", member.active ?"bg-emerald-500" :"bg-slate-400")} />
- <span className="text-sm font-semibold uppercase">{member.active ? 'Online' : 'Offline'}</span>
- </div>
- </div>
- </div>
- </header>
+	 <div className="min-h-full bg-background p-4 md:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-20">
+		 <div className="max-w-[1400px] mx-auto space-y-10">
+			 {/* Superior Navigation */}
+			 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+				 <div className="space-y-4">
+					 <Breadcrumbs items={[{ label: 'Monitoreo', href: '/monitoring/live' }, { label: 'Bio-Sincronización', href: '/monitoring/live' }, { label: member.name }]} />
+					 <div className="flex items-center gap-6">
+						 <Button 
+							 variant="outline" 
+							 size="icon" 
+							 className="h-12 w-12 rounded-xl border-border/40 hover:bg-secondary/50 transition-all shrink-0"
+							 onClick={() => { void navigate('/monitoring/live') }}
+						 >
+							 <ChevronLeft className="h-6 w-6" />
+						 </Button>
+						 <div className="flex items-center gap-5">
+							 <div className="relative">
+								 <img src={member.avatarUrl} className="h-20 w-20 rounded-xl border-4 border-background shadow-2xl object-cover" alt="" />
+								 <div className={cn(
+									 "absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-background shadow-lg",
+									 stats.activeTask ? "bg-emerald-500 animate-pulse" : (stats.blockedTask ? "bg-red-500" : "bg-slate-400")
+								 )} />
+							 </div>
+							 <div className="space-y-1">
+								 <h1 className="text-4xl font-semibold tracking-tight leading-none">{member.name}</h1>
+								 <div className="flex items-center gap-3">
+									 <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs font-medium px-2 py-0">
+										 {member.role}
+									 </Badge>
+									 <span className="text-xs font-medium text-muted-foreground/70">{member.specialty}</span>
+								 </div>
+							 </div>
+						 </div>
+					 </div>
+				 </div>
+				 <div className="flex items-center gap-4">
+					 <div className="px-6 py-3 bg-secondary/20 rounded-xl border border-border/40 backdrop-blur-sm">
+						 <p className="text-xs font-medium text-muted-foreground opacity-60">Status de Red</p>
+						 <div className="flex items-center gap-2">
+							 <div className={cn("h-2 w-2 rounded-full", member.active ? "bg-emerald-500" : "bg-slate-400")} />
+							 <span className="text-sm font-semibold uppercase">{member.active ? 'Online' : 'Offline'}</span>
+						 </div>
+					 </div>
+				 </div>
+			 </header>
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
  
@@ -236,14 +239,16 @@ export function MemberDetailPage() {
  <h4 className="text-base font-bold leading-tight line-clamp-1">{task.title}</h4>
  </div>
  <div className="text-right shrink-0 space-y-1">
- <span className="text-sm font-semibold block tabular-nums text-primary">{Math.floor((task.timeSpent || 0) / 3600)}h {Math.floor(((task.timeSpent || 0) % 3600) / 60)}m</span>
- <span className="text-xs font-semibold uppercase text-muted-foreground opacity-40 tracking-wide">Invertidos</span>
+	 <span className="text-sm font-medium block tabular-nums text-primary">{Math.floor((task.timeSpent || 0) / 3600)}h {Math.floor(((task.timeSpent || 0) % 3600) / 60)}m</span>
+	 <span className="text-xs font-medium text-muted-foreground/60">Invertidos</span>
  </div>
  <button
- onClick={() => { void navigate(`/editor/${task.storyId}/${task.id}`) }}
- className="h-10 w-10 rounded-xl bg-secondary/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-white"
+	 onClick={() => { void navigate(`/editor/${task.storyId}/${task.id}`) }}
+	 className="h-10 w-10 rounded-xl bg-secondary/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-white"
+	 aria-label="Ir al editor de tarea"
+	 title="Ir al editor de tarea"
  >
- <ArrowRight className="h-4 w-4" />
+	 <ArrowRight className="h-4 w-4" />
  </button>
  </div>
  ))

@@ -52,7 +52,7 @@ export function ActivityDetailPage() {
  return (
  <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
  <h2 className="text-2xl font-semibold opacity-40">Evento no encontrado</h2>
- <Button onClick={() => { void navigate('/monitoring/activity') }} className="rounded-xl font-semibold uppercase text-xs tracking-wide px-8">
+ <Button onClick={() => { void navigate('/monitoring/activity') }} className="rounded-xl font-semibold text-xs px-8">
  Regresar al Rastreo
  </Button>
  </div>
@@ -92,7 +92,7 @@ export function ActivityDetailPage() {
  <History className="h-10 w-10" />
  </div>
  <div>
- <h1 className="text-4xl font-semibold tracking-tight leading-none uppercase">Detalle de <span className="text-primary italic">Operación</span></h1>
+ <h1 className="text-4xl font-semibold tracking-tight leading-none">Detalle de <span className="text-primary italic">Operación</span></h1>
  <p className="text-xs font-bold text-muted-foreground mt-2 opacity-60">ID Registro: {log.id}</p>
  </div>
  </div>
@@ -107,7 +107,7 @@ export function ActivityDetailPage() {
  <CardContent className="p-10 space-y-8">
  
  <div className="flex items-center justify-between">
- <Badge variant="outline" className={cn("rounded-full px-6 py-1 font-semibold uppercase text-xs tracking-[0.2em]", actionColors[log.action] ||"")}>
+ <Badge variant="outline" className={cn("rounded-full px-4 py-1 font-semibold text-xs", actionColors[log.action] || "")}>
  {log.action}
  </Badge>
  <div className="flex items-center gap-2 text-muted-foreground opacity-60">
@@ -174,7 +174,7 @@ export function ActivityDetailPage() {
  <Button 
  variant="outline" 
  onClick={() => { void navigate(task ? `/editor/${story.id}/${task.id}` : `/stories/${story.id}`) }}
- className="w-full h-14 rounded-xl font-semibold uppercase text-xs tracking-[0.2em] group border-primary/20 hover:bg-primary/[0.05]"
+ className="w-full h-14 rounded-xl font-semibold text-sm group border-primary/20 hover:bg-primary/[0.05]"
  >
  Ver Recurso Vinculado
  <ExternalLink className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />

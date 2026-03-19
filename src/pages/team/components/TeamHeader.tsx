@@ -9,27 +9,25 @@ interface TeamHeaderProps {
 
 export function TeamHeader({ onAddMember }: TeamHeaderProps) {
  return (
- <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 shrink-0">
+ <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
  <div className="space-y-1">
  <Breadcrumbs items={[{ label: 'Gestión de Equipo' }, { label: 'Talento Operativo' }]} />
- <div className="flex items-center gap-4 pt-4">
- <div className="grid place-items-center h-14 w-14 rounded-xl bg-primary/10 border border-primary/10 shadow-inner">
- <Users className="h-8 w-8 text-primary" />
- </div>
- <div>
- <h1 className="text-2xl font-bold tracking-tight text-foreground">
- Talento Operativo
+ <div className="flex items-center gap-2.5 pt-0.5">
+ <h1 className="text-xl font-semibold tracking-tight text-foreground">
+ Talento <span className="text-primary">Operativo</span>
  </h1>
- <p className="text-muted-foreground font-medium mt-1">
+ <div className="grid place-items-center h-6 w-6 rounded-lg bg-primary/10 border border-primary/20">
+ <Users className="h-3 w-3 text-primary" />
+ </div>
+ </div>
+ <p className="text-sm font-medium text-muted-foreground/60">
  Gestión centralizada de especialistas y roles.
  </p>
  </div>
- </div>
- </div>
- <Button 
+ <Button
  size="sm"
- onClick={onAddMember} 
- className="rounded-lg gap-2"
+ onClick={onAddMember}
+ className="rounded-lg gap-2 font-semibold"
  >
  <UserPlus className="h-4 w-4" /> Integrar Miembro
  </Button>

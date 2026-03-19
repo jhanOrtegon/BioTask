@@ -72,9 +72,10 @@ export function BoardColumn({
  }
 
  return (
- <div className="flex flex-col h-full bg-card/30 border border-border/40 rounded-xl shadow-sm transition-all duration-300 hover:border-primary/10">
+ <div className="flex flex-col h-full bg-card/30 border border-border/40 rounded-xl shadow-sm transition-all duration-300 hover:border-primary/10 overflow-hidden">
+ <div className={cn("h-[3px] w-full shrink-0", styles.accent)} />
  <div className={cn(
- "sticky top-0 z-20 shrink-0 px-4 py-3 border-b flex items-center justify-between backdrop-blur-xl transition-colors rounded-t-xl",
+ "sticky top-0 z-20 shrink-0 px-4 py-2.5 border-b flex items-center justify-between backdrop-blur-xl transition-colors",
  styles.bg,
  styles.border
  )}>

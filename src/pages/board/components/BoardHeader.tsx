@@ -61,7 +61,7 @@ export function BoardHeader({
  }
  }
  return (
- <header className="shrink-0 space-y-4 pb-2">
+ <header className="shrink-0 space-y-3 pb-1">
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
  <div className="space-y-1">
  <Breadcrumbs items={[{ label: 'Ejecución' }, { label: 'Tablero Ágil' }]} />

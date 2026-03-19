@@ -21,7 +21,7 @@ export function LoadInsights({ data }: LoadInsightsProps) {
  return (
  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
  {stats.map((stat, i) => (
- <Card key={i} className="p-4 rounded-[1.5rem] border-primary/5 bg-secondary/20">
+ <Card key={i} className="p-4 rounded-xl border-primary/5 bg-secondary/20">
  <div className="flex items-center justify-between">
  <div className="space-y-0.5">
  <p className="text-xs font-semibold text-muted-foreground opacity-60">{stat.label}</p>

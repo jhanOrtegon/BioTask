@@ -10,12 +10,21 @@ import { useTeamStore } from '@/features/team/store'
 import { useEpicsStore } from '@/features/epics/store'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/shared/components/confirm-dialog'
+import { cn } from '@/shared/utils'
 
 import { BoardHeader } from './components/BoardHeader'
 import { BoardEmptyState } from './components/BoardEmptyState'
 import { BoardColumn } from './components/BoardColumn'
 
 type ColumnType = 'pending' | 'in_progress' | 'qa' | 'blocked' | 'completed'
+
+const COLUMN_DOT: Record<ColumnType, string> = {
+ pending: 'bg-amber-500',
+ in_progress: 'bg-blue-500',
+ qa: 'bg-violet-500',
+ blocked: 'bg-rose-500',
+ completed: 'bg-emerald-500',
+}
 
 const COLUMNS: { id: ColumnType, title: string }[] = [
  { id: 'pending', title: 'Por Hacer' },
@@ -158,7 +167,7 @@ export function BoardPage() {
  }
 
  return (
- <div className="flex flex-col h-[calc(100dvh-1rem)] md:h-[calc(100dvh-1rem)] bg-background px-4 md:px-6 lg:px-8 py-4 animate-in fade-in duration-300 relative overflow-hidden">
+ <div className="flex flex-col h-full bg-background px-4 md:px-6 lg:px-8 py-4 animate-in fade-in duration-300 relative overflow-hidden">
  <div className="max-w-full mx-auto w-full flex flex-col h-full min-h-0">
  <BoardHeader 
  activeSprint={activeSprint}
@@ -178,6 +187,25 @@ export function BoardPage() {
  setSearchQuery={setSearchQuery}
  tasksCount={allTasks.length}
  />
+
+ {currentSprint && (
+ <div className="shrink-0 flex items-center gap-1.5 py-2">
+ {COLUMNS.map(col => {
+ const count = allTasks.filter(t => t.status === col.id).length
+ const pct = allTasks.length > 0 ? Math.round((count / allTasks.length) * 100) : 0
+ return (
+ <div key={col.id} className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card/50 border border-border/30 min-w-0 group hover:border-border/60 transition-colors">
+ <div className={cn('h-1.5 w-1.5 shrink-0 rounded-full', COLUMN_DOT[col.id as ColumnType])} />
+ <span className="text-[11px] font-medium text-muted-foreground/50 truncate hidden md:block">{col.title}</span>
+ <span className="text-xs font-semibold tabular-nums ml-auto text-foreground/70">{count}</span>
+ {allTasks.length > 0 && (
+ <span className="text-[10px] font-medium text-muted-foreground/30 hidden lg:block">{pct}%</span>
+ )}
+ </div>
+ )
+ })}
+ </div>
+ )}
 
  <DragDropContext onDragEnd={onDragEnd}>
  <div className="flex-1 flex flex-col min-h-0 overflow-hidden">

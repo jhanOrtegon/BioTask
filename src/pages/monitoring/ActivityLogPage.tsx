@@ -163,7 +163,7 @@ export function ActivityLogPage() {
 
  <Button 
  variant="ghost" 
- className="h-11 rounded-xl px-5 text-sm font-bold text-muted-foreground hover:bg-secondary/80"
+ className="h-11 rounded-xl px-5 text-sm font-medium text-muted-foreground hover:bg-secondary/80"
  onClick={() => {
  setSearchTerm('')
  setActionFilter('all')
@@ -201,7 +201,7 @@ export function ActivityLogPage() {
  <div className="space-y-1 text-sm flex-1 min-w-0">
  <div className="flex items-center gap-2">
  {getActionIcon(log.action)}
- <span className="font-bold text-xs text-muted-foreground/60">
+ <span className="font-medium text-xs text-muted-foreground/60">
  {log.action} {log.targetType}
  </span>
  </div>
@@ -212,7 +212,7 @@ export function ActivityLogPage() {
  </p>
  
  <div className="flex items-center gap-3 pt-0.5">
- <span className="text-sm font-bold text-foreground/60 shrink-0 capitalize">
+ <span className="text-sm font-semibold text-foreground/60 shrink-0 capitalize">
  {member?.name || 'Sistema'}
  </span>
  <span className="text-muted-foreground/20 text-xs shrink-0">—</span>
@@ -224,11 +224,11 @@ export function ActivityLogPage() {
  </div>
  
  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0 sm:border-l border-border/10 sm:pl-6 w-full sm:w-auto justify-between sm:justify-center">
- <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground/50 bg-secondary/30 px-2 py-1 rounded-lg">
+ <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/50 bg-secondary/30 px-2 py-1 rounded-lg">
  <Clock className="h-3 w-3 opacity-60" />
  {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true, locale: es })}
  </div>
- <Badge variant="outline" className="text-xs font-bold border-border/40 lowercase tracking-tight px-2 py-0.5 bg-background/50 text-muted-foreground/60">
+ <Badge variant="outline" className="text-xs font-semibold border-border/40 lowercase tracking-tight px-2 py-0.5 bg-background/50 text-muted-foreground/60">
  {log.targetType}
  </Badge>
  </div>
@@ -254,7 +254,7 @@ export function ActivityLogPage() {
  size="sm"
  onClick={() => { setCurrentPage(prev => Math.max(1, prev - 1)) }}
  disabled={currentPage === 1}
- className="rounded-xl font-semibold text-xs uppercase"
+ className="rounded-xl font-semibold text-xs"
  >
  <ChevronLeft className="h-4 w-4 mr-1" />
  Anterior
@@ -282,7 +282,7 @@ export function ActivityLogPage() {
  size="sm"
  onClick={() => { setCurrentPage(prev => Math.min(totalPages, prev + 1)) }}
  disabled={currentPage === totalPages}
- className="rounded-xl font-semibold text-xs uppercase"
+ className="rounded-xl font-semibold text-xs"
  >
  Siguiente
  <ChevronRight className="h-4 w-4 ml-1" />

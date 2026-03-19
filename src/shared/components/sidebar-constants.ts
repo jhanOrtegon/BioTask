@@ -94,8 +94,6 @@ export const navSections: { title: string; items: NavItem[] }[] = [
  title: "GESTIÓN",
  items: [
  { icon: Settings, label: "Configuración", path: "/templates" },
- { icon: Fingerprint, label: "Centro de Seguridad", path: "/settings/security" },
- { icon: BookOpen, label: "Manuales de Operación", path: "/wiki" },
  ],
  },
 ]

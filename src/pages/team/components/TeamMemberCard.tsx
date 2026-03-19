@@ -12,7 +12,7 @@ import type { TeamMember, TeamRole } from '@/features/team/types'
 
 interface TeamMemberCardProps {
  member: TeamMember
- roleConfig: Record<TeamRole, { label: string; icon: React.ElementType; color: string; bg: string }>
+ roleConfig: Record<TeamRole, { label: string; icon: React.ElementType; color: string; bg: string; strip: string }>
  onEdit: (m: TeamMember) => void
  onToggleStatus: (m: TeamMember) => void
  onRemove: (id: string) => void
@@ -25,23 +25,27 @@ export function TeamMemberCard({ member, roleConfig, onEdit, onToggleStatus, onR
  return (
  <div 
  className={cn(
- "group relative bg-card border border-border/40 p-4 rounded-xl transition-all duration-300 hover:border-primary/20 hover:shadow-md",
+ "group relative overflow-hidden bg-card border border-border/40 rounded-xl transition-all duration-300 hover:border-primary/20 hover:shadow-md",
  !member.active && "opacity-60 grayscale-[0.8]"
  )}
  >
+ {/* Top color accent */}
+ <div className={cn("h-[3px] w-full shrink-0", config.strip)} />
+
+ <div className="p-4">
  <div className="flex items-start justify-between mb-4">
  <div className="relative">
- <div className="h-12 w-12 rounded-lg bg-primary/5 flex items-center justify-center border border-primary/10 overflow-hidden">
+ <div className="h-14 w-14 rounded-xl bg-primary/5 flex items-center justify-center border border-primary/10 overflow-hidden">
  {member.avatarUrl ? (
  <img src={member.avatarUrl} alt={member.name} className="h-full w-full object-cover" />
  ) : (
- <span className="text-lg font-semibold text-primary/40">
+ <span className="text-xl font-semibold text-primary/40">
  {member.name.charAt(0).toUpperCase()}
  </span>
  )}
  </div>
  {member.active && (
- <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-card shadow-sm" />
+ <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-card shadow-sm" />
  )}
  </div>
  <DropdownMenu>
@@ -74,16 +78,17 @@ export function TeamMemberCard({ member, roleConfig, onEdit, onToggleStatus, onR
  </p>
  </div>
 
- <div className="mt-4 pt-4 border-t border-border/10 flex items-center justify-between">
- <Badge variant="secondary" className={cn("rounded-md px-1.5 py-0 font-semibold uppercase text-xs tracking-wide border-none flex items-center gap-1", config.bg, config.color)}>
+ <div className="mt-4 pt-3 border-t border-border/10 flex items-center justify-between">
+ <Badge variant="secondary" className={cn("rounded-md px-2 py-0.5 font-semibold text-xs border-none flex items-center gap-1", config.bg, config.color)}>
  <RoleIcon className="h-2.5 w-2.5 opacity-70" />
  {config.label}
  </Badge>
  {member.specialty && (
- <span className="text-xs font-medium text-muted-foreground/30">
+ <span className="text-xs font-medium text-muted-foreground/30 truncate max-w-[90px] text-right">
  {member.specialty}
  </span>
  )}
+ </div>
  </div>
  </div>
  )

@@ -20,15 +20,15 @@ export function SmartInsight({ insight, onActionPlan }: SmartInsightProps) {
  </div>
  <div className="flex-1 space-y-3">
  <div className="flex items-center gap-3">
- <h3 className="text-xl font-semibold tracking-tight uppercase">{insight.title}</h3>
- <Badge className="bg-primary text-primary-foreground border-none text-xs uppercase font-semibold tracking-[0.2em] px-3 py-0.5 rounded-full">Management v5.0</Badge>
+ <h3 className="text-xl font-semibold tracking-tight">{insight.title}</h3>
+ <Badge className="bg-primary text-primary-foreground border-none text-xs font-semibold px-3 py-0.5 rounded-full">Management v5.0</Badge>
  </div>
  <p className="text-base text-muted-foreground font-semibold max-w-3xl leading-relaxed">
  {insight.message}
  {insight.bottleneck && (
  <span className="text-foreground block mt-2 p-3 bg-card/50 rounded-xl border border-border/50">
  <AlertTriangle className="h-4 w-4 inline mr-2 text-amber-500" />
- <span className="text-xs uppercase font-semibold text-amber-500/80 tracking-wide mr-2">Cuello de Botella:</span>
+ <span className="text-xs font-semibold text-amber-500/80 mr-2">Cuello de Botella:</span>
  <span className="font-bold underline decoration-primary/30 decoration-primary underline-offset-4">{insight.bottleneck}</span>
  </span>
  )}

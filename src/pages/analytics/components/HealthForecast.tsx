@@ -18,7 +18,7 @@ export function HealthForecast({ data }: HealthForecastProps) {
  <div className="space-y-6">
  <div className="space-y-1 text-center md:text-left">
  <h3 className="text-lg font-semibold italic">Forecast Diario</h3>
- <p className="text-xs font-bold text-muted-foreground opacity-40">Ritmo Sugerido</p>
+ <p className="text-xs font-medium text-muted-foreground opacity-40">Ritmo Sugerido</p>
  </div>
  <div className="space-y-5">
  {data.map((day, idx) => (

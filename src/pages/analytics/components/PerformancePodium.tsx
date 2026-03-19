@@ -29,17 +29,17 @@ export function PerformancePodium({ top3 }: PerformancePodiumProps) {
  </div>
  <div className="flex-1 min-w-0">
  <p className="text-lg font-semibold truncate">{dev.name}</p>
- <p className="text-xs font-bold text-muted-foreground">{dev.specialty}</p>
+ <p className="text-xs font-semibold text-muted-foreground">{dev.specialty}</p>
  </div>
  {idx === 0 && <Medal className="h-8 w-8 text-amber-500 animate-pulse" />}
  </div>
  <div className="mt-6 grid grid-cols-2 gap-4">
  <div className="bg-background/50 p-3 rounded-xl">
- <span className="block text-xs font-semibold text-muted-foreground uppercase">Eficiencia</span>
+ <span className="block text-xs font-semibold text-muted-foreground">Eficiencia</span>
  <span className="text-xl font-semibold text-primary">{dev.efficiency}%</span>
  </div>
  <div className="bg-background/50 p-3 rounded-xl">
- <span className="block text-xs font-semibold text-muted-foreground uppercase">Total Invertido</span>
+ <span className="block text-xs font-semibold text-muted-foreground">Total Invertido</span>
  <span className="text-xl font-semibold text-foreground">{dev.totalHours.toFixed(1)}h</span>
  </div>
  </div>

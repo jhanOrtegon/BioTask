@@ -70,7 +70,7 @@ export function HealthPage() {
  <BrainCircuit className="h-12 w-12 text-primary/40 mx-auto animate-pulse" />
  <div className="space-y-2">
  <h2 className="text-xl font-semibold italic">No hay Sprint Activo</h2>
- <p className="text-sm text-muted-foreground font-bold">Activa un sprint en el Lab para visualizar la telemetría de salud.</p>
+ <p className="text-sm text-muted-foreground font-medium">Activa un sprint en el Lab para visualizar la telemetría de salud.</p>
  </div>
  <Button onClick={() => { void navigate('/sprints') }} className="w-full rounded-xl font-semibold shadow-lg shadow-primary/20">
  Ir al Lab de Sprints

@@ -67,7 +67,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Label htmlFor="title" className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
               <LayoutPanelLeft className="h-3.5 w-3.5" /> Título del Molde
             </Label>
             <Input 
@@ -81,7 +81,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="taskType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Label htmlFor="taskType" className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
               <Info className="h-3.5 w-3.5" /> Tipo de Tarea
             </Label>
             <Select 
@@ -103,7 +103,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Label htmlFor="description" className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
             <Info className="h-3.5 w-3.5" /> Descripción
           </Label>
           <Input 
@@ -141,7 +141,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Visible</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Visible</span>
                     <Checkbox 
                       id="hasObjective" 
                       disabled={readOnly}
@@ -153,7 +153,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className={`text-[10px] font-bold uppercase tracking-wide ${formData.requiredObjective ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
+                          <span className={`text-xs font-semibold ${formData.requiredObjective ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
                         </TooltipTrigger>
                         <TooltipContent>No se podrá guardar la tarea sin este campo</TooltipContent>
                       </Tooltip>
@@ -183,7 +183,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Visible</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Visible</span>
                     <Checkbox 
                       id="hasServices" 
                       disabled={readOnly}
@@ -192,7 +192,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wide ${formData.requiredServices ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
+                    <span className={`text-xs font-semibold ${formData.requiredServices ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
                     <Checkbox 
                       id="requiredServices" 
                       disabled={readOnly || !formData.hasServices}
@@ -218,7 +218,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Visible</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Visible</span>
                     <Checkbox 
                       id="hasFunctionalRequirements" 
                       disabled={readOnly}
@@ -227,7 +227,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wide ${formData.requiredRequirements ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
+                    <span className={`text-xs font-semibold ${formData.requiredRequirements ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
                     <Checkbox 
                       id="requiredRequirements" 
                       disabled={readOnly || !formData.hasFunctionalRequirements}
@@ -253,7 +253,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Visible</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Visible</span>
                     <Checkbox 
                       id="hasValidations" 
                       disabled={readOnly}
@@ -262,7 +262,7 @@ export function TemplateForm({ initialData, readOnly = false, onSubmit, onCancel
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wide ${formData.requiredValidations ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
+                    <span className={`text-xs font-semibold ${formData.requiredValidations ? 'text-amber-600' : 'text-muted-foreground'}`}>Obligatorio</span>
                     <Checkbox 
                       id="requiredValidations" 
                       disabled={readOnly || !formData.hasValidations}

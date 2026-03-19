@@ -133,7 +133,7 @@ export function OperationalPulsePage() {
  <Activity className="h-8 w-8 text-primary" />
  </div>
  <div>
- <h1 className="text-2xl font-bold tracking-tight text-foreground">
+ <h1 className="text-2xl font-semibold tracking-tight text-foreground">
  Pulso Operativo
  </h1>
  <p className="text-muted-foreground text-sm font-medium mt-1">
@@ -234,7 +234,7 @@ export function OperationalPulsePage() {
  <div className="flex-1 min-w-0">
  <h3 className="text-base font-semibold truncate">{member.name}</h3>
  <div className="flex items-center gap-1.5 opacity-60">
- <Badge variant="outline" className="text-xs font-semibold uppercase px-1 h-4 border-primary/20 bg-primary/5">
+ <Badge variant="outline" className="text-xs font-semibold px-1 h-4 border-primary/20 bg-primary/5">
  {member.specialty}
  </Badge>
  </div>
@@ -273,7 +273,7 @@ export function OperationalPulsePage() {
  <AlertCircle className="h-3.5 w-3.5 text-red-500" />
  <span className="text-xs font-medium text-red-600">Bloqueado</span>
  </div>
- <p className="text-xs font-bold leading-tight line-clamp-2 italic text-red-900/70">
+ <p className="text-xs font-semibold leading-tight line-clamp-2 italic text-red-900/70">
  {blockedTask.storyCode}: {blockedTask.title}
  </p>
  </div>
@@ -319,7 +319,7 @@ export function OperationalPulsePage() {
  size="sm"
  onClick={() => { setCurrentPage(prev => Math.max(1, prev - 1)) }}
  disabled={currentPage === 1}
- className="rounded-xl font-semibold text-xs uppercase h-10 px-6 border-border/40"
+ className="rounded-xl font-semibold text-xs h-10 px-6 border-border/40"
  >
  <ChevronLeft className="h-4 w-4 mr-2" />
  Anterior
@@ -347,7 +347,7 @@ export function OperationalPulsePage() {
  size="sm"
  onClick={() => { setCurrentPage(prev => Math.min(totalPages, prev + 1)) }}
  disabled={currentPage === totalPages}
- className="rounded-xl font-semibold text-xs uppercase h-10 px-6 border-border/40"
+ className="rounded-xl font-semibold text-xs h-10 px-6 border-border/40"
  >
  Siguiente
  <ChevronRight className="h-4 w-4 ml-2" />
