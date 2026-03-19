@@ -1,6 +1,6 @@
 import { Draggable, Droppable } from '@hello-pangea/dnd'
 import { Badge } from '@/shared/components/badge'
-import { GripVertical, ChevronRight, ChevronDown, ArrowRight } from 'lucide-react'
+import { GripVertical, ChevronRight, ChevronDown } from 'lucide-react'
 import { PlannerTaskCard } from './PlannerTaskCard'
 import type { Story, TrackedTask } from '@/features/stories/types'
 import { cn } from '@/shared/utils'
