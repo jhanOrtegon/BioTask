@@ -30,7 +30,7 @@ export default tseslint.config(
       'react-refresh/only-export-components': [
         'off',
       ],
-      // Reglas súper estrictas adicionales solicitadas por el Arquitecto/Usuario
+      // Additional super strict rules
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unsafe-assignment': 'error',
       '@typescript-eslint/no-unsafe-member-access': 'error',
@@ -38,16 +38,12 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
     },
   },
   {
     files: ['src/shared/ui/**/*.tsx'],
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/no-deprecated': 'off',
       '@typescript-eslint/no-unnecessary-template-expression': 'off',

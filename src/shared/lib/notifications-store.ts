@@ -45,7 +45,7 @@ export const useNotificationStore = create<NotificationState>()(
       clearAll: () => set({ notifications: [] }),
     }),
     {
-      name: 'biopulse-notifications',
+      name: 'biotask-notifications',
     }
   )
 )

@@ -11,7 +11,7 @@ export const useEpicsStore = create<EpicsState>()(
         set({ epics })
       },
 
-      addEpic: (epicData: Omit<Epic, 'id' | 'createdAt' | 'updatedAt'>) => {
+      addEpic: (epicData: Omit<Epic, 'id' | 'createdAt' | 'updatedAt' | 'progress'>) => {
         const newEpic: Epic = {
           ...epicData,
           id: crypto.randomUUID(),

@@ -1,0 +1,243 @@
+
+> frontend@0.0.0 lint
+> eslint .
+
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\features\tasks\components\dynamic-editor\components\ServicesSection.tsx
+  78:89   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  78:122  error  Unsafe assignment of an `any` value       @typescript-eslint/no-unsafe-assignment
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\features\tasks\components\dynamic-editor\hooks\useDynamicEditorLogic.ts
+  176:28  error  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `currentTask`, but the source dependencies were [currentTask?.templateId, templates]. Inferred less specific property than source.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\features\tasks\components\dynamic-editor\hooks\useDynamicEditorLogic.ts:176:28
+  174 |
+  175 |   const activeStories = useMemo(() => stories.filter(s => s.status === 'active'), [stories])
+> 176 |   const template = useMemo(() => 
+      |                            ^^^^^^
+> 177 |     currentTask?.templateId ? templates.find(t => t.id === currentTask.templateId) : undefined,
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not preserve existing manual memoization
+  178 |   [currentTask?.templateId, templates])
+  179 |
+  180 |   return {  react-hooks/preserve-manual-memoization
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\AnalyticsPage.tsx
+  63:11  error  Unnecessary conditional, value is always falsy  @typescript-eslint/no-unnecessary-condition
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\PerformancePage.tsx
+  55:13  error  Unnecessary conditional, value is always falsy  @typescript-eslint/no-unnecessary-condition
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\AnalyticsOverviewTab.tsx
+  40:26  error  `Cell` is deprecated  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\HealthForecast.tsx
+  42:129  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\HealthHeader.tsx
+  21:51  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\LoadCharts.tsx
+  11:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:27  error  `Cell` is deprecated                      @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\LoadHeader.tsx
+  10:51  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\LoadTable.tsx
+  13:9    error  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  42:109  error  Unsafe member access .name on an `any` value    @typescript-eslint/no-unsafe-member-access
+  45:75   error  Unsafe member access .Tareas on an `any` value  @typescript-eslint/no-unsafe-member-access
+  48:73   error  Unsafe member access .Horas on an `any` value   @typescript-eslint/no-unsafe-member-access
+  53:127  error  Unsafe member access .Horas on an `any` value   @typescript-eslint/no-unsafe-member-access
+  55:96   error  Unsafe member access .Horas on an `any` value   @typescript-eslint/no-unsafe-member-access
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\PerformancePodium.tsx
+   6:9    error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  16:20   error  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  16:24   error  Unsafe member access .id on an `any` value          @typescript-eslint/no-unsafe-member-access
+  23:27   error  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  23:31   error  Unsafe member access .avatar on an `any` value      @typescript-eslint/no-unsafe-member-access
+  30:65   error  Unsafe member access .name on an `any` value        @typescript-eslint/no-unsafe-member-access
+  31:103  error  Unsafe member access .specialty on an `any` value   @typescript-eslint/no-unsafe-member-access
+  38:72   error  Unsafe member access .efficiency on an `any` value  @typescript-eslint/no-unsafe-member-access
+  42:71   error  Unsafe call of an `any` typed value                 @typescript-eslint/no-unsafe-call
+  42:75   error  Unsafe member access .totalHours on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\PerformanceTable.tsx
+  16:9   error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+  45:32  error  Unsafe assignment of an `any` value                     @typescript-eslint/no-unsafe-assignment
+  45:36  error  Unsafe member access .id on an `any` value              @typescript-eslint/no-unsafe-member-access
+  48:33  error  Unsafe assignment of an `any` value                     @typescript-eslint/no-unsafe-assignment
+  48:37  error  Unsafe member access .avatar on an `any` value          @typescript-eslint/no-unsafe-member-access
+  50:64  error  Unsafe member access .name on an `any` value            @typescript-eslint/no-unsafe-member-access
+  51:89  error  Unsafe member access .specialty on an `any` value       @typescript-eslint/no-unsafe-member-access
+  58:27  error  Unsafe member access .todayHours on an `any` value      @typescript-eslint/no-unsafe-member-access
+  60:24  error  Unsafe call of an `any` typed value                     @typescript-eslint/no-unsafe-call
+  60:28  error  Unsafe member access .todayHours on an `any` value      @typescript-eslint/no-unsafe-member-access
+  65:64  error  Unsafe member access .completedTasks on an `any` value  @typescript-eslint/no-unsafe-member-access
+  66:61  error  Unsafe member access .activeTasks on an `any` value     @typescript-eslint/no-unsafe-member-access
+  67:60  error  Unsafe member access .blockedTasks on an `any` value    @typescript-eslint/no-unsafe-member-access
+  72:29  error  Unsafe member access .status on an `any` value          @typescript-eslint/no-unsafe-member-access
+  73:29  error  Unsafe member access .status on an `any` value          @typescript-eslint/no-unsafe-member-access
+  77:30  error  Unsafe member access .status on an `any` value          @typescript-eslint/no-unsafe-member-access
+  78:30  error  Unsafe member access .status on an `any` value          @typescript-eslint/no-unsafe-member-access
+  81:31  error  Unsafe member access .insight on an `any` value         @typescript-eslint/no-unsafe-member-access
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\board\BoardPage.tsx
+  148:29  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+  153:48  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+  164:36  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\dashboard\components\DistributionChart.tsx
+  37:23  error  `Cell` is deprecated  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\dashboard\components\LoadAnalysisChart.tsx
+  77:24  error  `Cell` is deprecated  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\editor\EditorPage.tsx
+  43:15  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  44:25  error  Unsafe member access .title on an `any` value                                                                                                                       @typescript-eslint/no-unsafe-member-access
+  44:62  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  44:74  error  Unsafe member access .title on an `any` value                                                                                                                       @typescript-eslint/no-unsafe-member-access
+  45:25  error  Unsafe member access .type on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  45:61  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  45:72  error  Unsafe member access .type on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  46:25  error  Unsafe member access .featureName on an `any` value                                                                                                                 @typescript-eslint/no-unsafe-member-access
+  46:68  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  46:86  error  Unsafe member access .featureName on an `any` value                                                                                                                 @typescript-eslint/no-unsafe-member-access
+  47:25  error  Unsafe member access .screenPath on an `any` value                                                                                                                  @typescript-eslint/no-unsafe-member-access
+  47:67  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  47:84  error  Unsafe member access .screenPath on an `any` value                                                                                                                  @typescript-eslint/no-unsafe-member-access
+  48:18  error  Unsafe member access .data on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  48:39  error  Unsafe argument of type `any` assigned to a parameter of type `Partial<SectionData>`                                                                                @typescript-eslint/no-unsafe-argument
+  48:44  error  Unsafe member access .data on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  49:29  error  Unsafe argument of type `any` assigned to a parameter of type `Partial<SectionData>`                                                                                @typescript-eslint/no-unsafe-argument
+  73:38  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\editor\components\EditorDialogs.tsx
+  81:71  error  Invalid type "string | null" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\login\LoginPage.tsx
+  20:40  error  `FormEvent` is deprecated. FormEvent doesn't actually exist.
+You probably meant to use {@link ChangeEvent}, {@link InputEvent}, {@link SubmitEvent}, or just {@link SyntheticEvent} instead
+depending on the event type  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\planner\SprintPlannerPage.tsx
+  147:40  error  Using !! on a boolean does not change the type or value of the boolean             @typescript-eslint/no-unnecessary-type-conversion
+  150:46  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\planner\components\PlannerSidebar.tsx
+  59:22  error  `Cell` is deprecated  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\sprints\SprintsPage.tsx
+  109:16  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\sprints\components\SprintsDialogs.tsx
+   37:9   error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   80:31  error  Unsafe assignment of an `any` value                   @typescript-eslint/no-unsafe-assignment
+   80:31  error  Unsafe call of an `any` typed value                   @typescript-eslint/no-unsafe-call
+   80:36  error  Unsafe member access .handleSubmit on an `any` value  @typescript-eslint/no-unsafe-member-access
+   84:32  error  Unsafe assignment of an `any` value                   @typescript-eslint/no-unsafe-assignment
+   84:37  error  Unsafe member access .control on an `any` value       @typescript-eslint/no-unsafe-member-access
+   99:30  error  Unsafe assignment of an `any` value                   @typescript-eslint/no-unsafe-assignment
+   99:35  error  Unsafe member access .control on an `any` value       @typescript-eslint/no-unsafe-member-access
+  116:30  error  Unsafe assignment of an `any` value                   @typescript-eslint/no-unsafe-assignment
+  116:35  error  Unsafe member access .control on an `any` value       @typescript-eslint/no-unsafe-member-access
+  134:32  error  Unsafe assignment of an `any` value                   @typescript-eslint/no-unsafe-assignment
+  134:37  error  Unsafe member access .control on an `any` value       @typescript-eslint/no-unsafe-member-access
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\stories\StoriesPage.tsx
+  71:29  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\stories\components\StoriesTable.tsx
+  184:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\stories\components\StoriesTable.tsx:184:17
+  182 |   ], [epics, onView, onEdit, onArchive, onRestore, formatDate])
+  183 |
+> 184 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  185 |     data: stories,
+  186 |     columns,
+  187 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\story-detail\StoryDetailPage.tsx
+   73:37  error  Unnecessary conditional, value is always truthy                                                                                                                     @typescript-eslint/no-unnecessary-condition
+  123:28  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  141:59  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\story-detail\components\StoryDialogs.tsx
+  200:47  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\story-detail\components\TaskTable.tsx
+  348:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\story-detail\components\TaskTable.tsx:348:17
+  346 |   ], [onViewTask, getMemberById, onStatusChange, isReadOnly, startTaskTimer, pauseTaskTimer, stopTaskTimer, onEditTask, onArchiveTask, onResetTimer, formatDate])
+  347 |
+> 348 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  349 |     data: tasks,
+  350 |     columns,
+  351 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\tasks\TasksPage.tsx
+  49:29  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\tasks\components\TasksTable.tsx
+  168:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\tasks\components\TasksTable.tsx:168:17
+  166 |   ], [getMemberById, onStatusChange, onView, onEdit, onNavigateToStory])
+  167 |
+> 168 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  169 |     data: tasks,
+  170 |     columns,
+  171 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\tasks\hooks\useTasksLogic.ts
+  57:43  error  Unsafe assignment of an `any` value       @typescript-eslint/no-unsafe-assignment
+  57:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\team\TeamPage.tsx
+  61:13  error  Unnecessary conditional, value is always falsy  @typescript-eslint/no-unnecessary-condition
+  69:13  error  Unnecessary conditional, value is always falsy  @typescript-eslint/no-unnecessary-condition
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\templates\TemplatesPage.tsx
+  163:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\templates\TemplatesPage.tsx:163:17
+  161 |   }, [templates, currentPage])
+  162 |
+> 163 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  164 |     data: paginatedTemplates,
+  165 |     columns,
+  166 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\shared\components\form.tsx
+  148:24  error  Passing a string to String() does not change the type or value of the string  @typescript-eslint/no-unnecessary-type-conversion
+  148:36  error  Unnecessary optional chain on a non-nullish value                             @typescript-eslint/no-unnecessary-condition
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\shared\components\sidebar.tsx
+  140:9  error  Unnecessary conditional, value is always falsy         @typescript-eslint/no-unnecessary-condition
+  428:1  error  File has too many lines (445). Maximum allowed is 400  max-lines
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\shared\components\theme-provider.tsx
+  30:12  error  Unnecessary conditional, value is always truthy     @typescript-eslint/no-unnecessary-condition
+  69:7   error  Unnecessary conditional, the types have no overlap  @typescript-eslint/no-unnecessary-condition
+
+✖ 107 problems (103 errors, 4 warnings)
+

@@ -7,6 +7,7 @@ export interface ServiceDetail {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   params?: string;
   payload?: string;
+  payloadType?: 'JSON' | 'FormData' | 'Text' | 'None';
   response?: string;
 }
 

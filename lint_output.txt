@@ -1,0 +1,153 @@
+
+> frontend@0.0.0 lint C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend
+> eslint .
+
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\features\tasks\components\dynamic-editor\components\ServicesSection.tsx
+  78:89   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  78:122  error  Unsafe assignment of an `any` value       @typescript-eslint/no-unsafe-assignment
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\features\tasks\components\dynamic-editor\hooks\useDynamicEditorLogic.ts
+  176:28  error  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `currentTask`, but the source dependencies were [currentTask?.templateId, templates]. Inferred less specific property than source.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\features\tasks\components\dynamic-editor\hooks\useDynamicEditorLogic.ts:176:28
+  174 |
+  175 |   const activeStories = useMemo(() => stories.filter(s => s.status === 'active'), [stories])
+> 176 |   const template = useMemo(() => 
+      |                            ^^^^^^
+> 177 |     currentTask?.templateId ? templates.find(t => t.id === currentTask.templateId) : undefined,
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not preserve existing manual memoization
+  178 |   [currentTask?.templateId, templates])
+  179 |
+  180 |   return {  react-hooks/preserve-manual-memoization
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\AnalyticsPage.tsx
+  63:11  error  Unnecessary conditional, value is always falsy  @typescript-eslint/no-unnecessary-condition
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\AnalyticsOverviewTab.tsx
+  40:26  error  `Cell` is deprecated  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\analytics\components\LoadCharts.tsx
+  11:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:27  error  `Cell` is deprecated                      @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\dashboard\components\DistributionChart.tsx
+  37:23  error  `Cell` is deprecated  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\dashboard\components\LoadAnalysisChart.tsx
+  77:24  error  `Cell` is deprecated  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\editor\EditorPage.tsx
+  43:15  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  44:25  error  Unsafe member access .title on an `any` value                                                                                                                       @typescript-eslint/no-unsafe-member-access
+  44:62  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  44:74  error  Unsafe member access .title on an `any` value                                                                                                                       @typescript-eslint/no-unsafe-member-access
+  45:25  error  Unsafe member access .type on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  45:61  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  45:72  error  Unsafe member access .type on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  46:25  error  Unsafe member access .featureName on an `any` value                                                                                                                 @typescript-eslint/no-unsafe-member-access
+  46:68  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  46:86  error  Unsafe member access .featureName on an `any` value                                                                                                                 @typescript-eslint/no-unsafe-member-access
+  47:25  error  Unsafe member access .screenPath on an `any` value                                                                                                                  @typescript-eslint/no-unsafe-member-access
+  47:67  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  47:84  error  Unsafe member access .screenPath on an `any` value                                                                                                                  @typescript-eslint/no-unsafe-member-access
+  48:18  error  Unsafe member access .data on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  48:39  error  Unsafe argument of type `any` assigned to a parameter of type `Partial<SectionData>`                                                                                @typescript-eslint/no-unsafe-argument
+  48:44  error  Unsafe member access .data on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  49:29  error  Unsafe argument of type `any` assigned to a parameter of type `Partial<SectionData>`                                                                                @typescript-eslint/no-unsafe-argument
+  73:38  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\login\LoginPage.tsx
+  20:40  error  `FormEvent` is deprecated. FormEvent doesn't actually exist.
+You probably meant to use {@link ChangeEvent}, {@link InputEvent}, {@link SubmitEvent}, or just {@link SyntheticEvent} instead
+depending on the event type  @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\planner\SprintPlannerPage.tsx
+  20:28  error  'setSelectedSprintId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\planner\components\PlannerSidebar.tsx
+   2:10  error  'BarChart3' is defined but never used  @typescript-eslint/no-unused-vars
+  60:22  error  `Cell` is deprecated                   @typescript-eslint/no-deprecated
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\sprints\components\SprintsDialogs.tsx
+  82:30  error  Promise-returning function provided to attribute where a void return was expected  @typescript-eslint/no-misused-promises
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\stories\components\StoriesTable.tsx
+   15:65  error    'Ban' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  190:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\stories\components\StoriesTable.tsx:190:17
+  188 |   ], [epics, onView, onEdit, onArchive, onRestore, formatDate])
+  189 |
+> 190 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  191 |     data: stories,
+  192 |     columns,
+  193 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\story-detail\StoryDetailPage.tsx
+   75:37  error  Unnecessary conditional, value is always truthy  @typescript-eslint/no-unnecessary-condition
+  143:59  error  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\story-detail\components\TaskTable.tsx
+  348:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\story-detail\components\TaskTable.tsx:348:17
+  346 |   ], [onViewTask, getMemberById, onStatusChange, isReadOnly, startTaskTimer, pauseTaskTimer, stopTaskTimer, onEditTask, onArchiveTask, onResetTimer, formatDate])
+  347 |
+> 348 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  349 |     data: tasks,
+  350 |     columns,
+  351 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\tasks\components\TasksTable.tsx
+  167:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\tasks\components\TasksTable.tsx:167:17
+  165 |   ], [getMemberById, onStatusChange, onView, onEdit, onNavigateToStory])
+  166 |
+> 167 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  168 |     data: tasks,
+  169 |     columns,
+  170 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\templates\TemplatesPage.tsx
+  171:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\pages\templates\TemplatesPage.tsx:171:17
+  169 |   }, [filteredTemplates, currentPage, itemsPerPage])
+  170 |
+> 171 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  172 |     data: paginatedTemplates,
+  173 |     columns,
+  174 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\shared\components\form.tsx
+  148:24  error  Passing a string to String() does not change the type or value of the string  @typescript-eslint/no-unnecessary-type-conversion
+  148:36  error  Unnecessary optional chain on a non-nullish value                             @typescript-eslint/no-unnecessary-condition
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\shared\components\sidebar.tsx
+  142:9  error  Unnecessary conditional, value is always falsy         @typescript-eslint/no-unnecessary-condition
+  428:1  error  File has too many lines (450). Maximum allowed is 400  max-lines
+
+C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend\src\shared\components\theme-provider.tsx
+  30:12  error  Unnecessary conditional, value is always truthy     @typescript-eslint/no-unnecessary-condition
+  69:7   error  Unnecessary conditional, the types have no overlap  @typescript-eslint/no-unnecessary-condition
+
+✖ 46 problems (42 errors, 4 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.

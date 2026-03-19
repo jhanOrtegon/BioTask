@@ -1,0 +1,67 @@
+
+> frontend@0.0.0 build C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend
+> tsc -b && vite build
+
+src/features/epics/store.ts(14,7): error TS2322: Type '(epicData: Omit<Epic, "id" | "createdAt" | "updatedAt">) => void' is not assignable to type '(epic: Omit<Epic, "id" | "progress" | "createdAt" | "updatedAt">) => void'.
+  Types of parameters 'epicData' and 'epic' are incompatible.
+    Property 'progress' is missing in type 'Omit<Epic, "id" | "progress" | "createdAt" | "updatedAt">' but required in type 'Omit<Epic, "id" | "createdAt" | "updatedAt">'.
+src/features/tasks/ui/dynamic-editor/components/ServicesSection.tsx(13,1): error TS6133: 'TaskDraft' is declared but its value is never read.
+src/features/tasks/ui/dynamic-editor/components/SharedComponents.tsx(3,1): error TS6133: 'Textarea' is declared but its value is never read.
+src/features/tasks/ui/dynamic-editor/hooks/useDynamicEditorLogic.ts(175,25): error TS2304: Cannot find name 'useMemo'.
+src/features/tasks/ui/dynamic-editor/hooks/useDynamicEditorLogic.ts(176,20): error TS2304: Cannot find name 'useMemo'.
+src/features/tasks/ui/DynamicTaskEditor.tsx(54,59): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/pages/analytics/components/AnalyticsInsights.tsx(1,16): error TS6133: 'CardHeader' is declared but its value is never read.
+src/pages/analytics/components/AnalyticsInsights.tsx(1,28): error TS6133: 'CardTitle' is declared but its value is never read.
+src/pages/analytics/components/AnalyticsInsights.tsx(1,39): error TS6133: 'CardDescription' is declared but its value is never read.
+src/pages/board/components/BoardColumn.tsx(6,28): error TS6196: 'Story' is declared but never used.
+src/pages/editor/EditorPage.tsx(70,9): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/pages/epics/EpicsPage.tsx(23,5): error TS6133: 'actionPlanEpicId' is declared but its value is never read.
+src/pages/epics/EpicsPage.tsx(27,5): error TS2339: Property 'navigate' does not exist on type '{ epics: { storyCount: number; taskCount: number; completedCount: number; calculatedProgress: number; formattedTime: string; slowestStories: { id: string; title: string; pendingCount: number; }[]; ... 8 more ...; updatedAt: string; }[]; ... 16 more ...; handleSave: () => void; }'.
+src/pages/epics/hooks/useEpicsLogic.ts(5,1): error TS6133: 'Epic' is declared but its value is never read.
+src/pages/planner/components/PlannerSidebar.tsx(2,10): error TS2724: '"recharts"' has no exported member named 'BarChart3'. Did you mean 'BarChart'?
+src/pages/planner/components/PlannerSidebar.tsx(2,21): error TS2305: Module '"recharts"' has no exported member 'Target'.
+src/pages/planner/SprintPlannerPage.tsx(70,44): error TS2339: Property 'destination' does not exist on type 'DraggableLocation<string>'.
+src/pages/sprints/components/SprintsDialogs.tsx(218,8): error TS2741: Property 'description' is missing in type '{ open: boolean; onOpenChange: (v: boolean) => void; title: string; onConfirm: (comment: string) => void; }' but required in type 'CommentDialogProps'.
+src/pages/stories/hooks/useStoriesLogic.ts(6,1): error TS6133: 'Story' is declared but its value is never read.
+src/pages/stories/StoriesPage.tsx(13,5): error TS6133: 'allFilteredStories' is declared but its value is never read.
+src/pages/stories/StoriesPage.tsx(98,9): error TS2322: Type 'Dispatch<SetStateAction<{ code: string; title: string; module: string; description: string; epicId: string; }>>' is not assignable to type 'Dispatch<SetStateAction<EditStoryForm>>'.
+  Type 'SetStateAction<EditStoryForm>' is not assignable to type 'SetStateAction<{ code: string; title: string; module: string; description: string; epicId: string; }>'.
+    Type 'EditStoryForm' is not assignable to type 'SetStateAction<{ code: string; title: string; module: string; description: string; epicId: string; }>'.
+      Property 'description' is missing in type 'EditStoryForm' but required in type '{ code: string; title: string; module: string; description: string; epicId: string; }'.
+src/pages/stories/types.ts(1,1): error TS6133: 'Story' is declared but its value is never read.
+src/pages/story-detail/components/TaskViewDialog.tsx(30,39): error TS2322: Type '{ initialData: TrackedTask; readOnly: true; }' is not assignable to type 'IntrinsicAttributes & DynamicTaskEditorProps'.
+  Property 'initialData' does not exist on type 'IntrinsicAttributes & DynamicTaskEditorProps'.
+src/pages/story-detail/StoryDetailPage.tsx(2,10): error TS6133: 'useParams' is declared but its value is never read.
+src/pages/story-detail/StoryDetailPage.tsx(39,5): error TS6133: 'ITEMS_PER_PAGE' is declared but its value is never read.
+src/pages/story-detail/StoryDetailPage.tsx(142,11): error TS2322: Type '(id: string) => TeamMember | undefined' is not assignable to type '(id: string) => TeamMember | null'.
+  Type 'TeamMember | undefined' is not assignable to type 'TeamMember | null'.
+    Type 'undefined' is not assignable to type 'TeamMember | null'.
+src/pages/story-detail/StoryDetailPage.tsx(171,11): error TS2322: Type 'Dispatch<SetStateAction<{ taskId: string; title: string; } | null>>' is not assignable to type '(task: TrackedTask) => void'.
+  Types of parameters 'value' and 'task' are incompatible.
+    Type 'TrackedTask' is not assignable to type 'SetStateAction<{ taskId: string; title: string; } | null>'.
+      Property 'taskId' is missing in type 'TrackedTask' but required in type '{ taskId: string; title: string; }'.
+src/pages/story-detail/StoryDetailPage.tsx(213,9): error TS2322: Type '(values: { code: string; title: string; module: string; description: string; }) => void' is not assignable to type '(values: { code: string; title: string; module: string; description?: string | undefined; }) => void'.
+  Types of parameters 'values' and 'values' are incompatible.
+    Type '{ code: string; title: string; module: string; description?: string | undefined; }' is not assignable to type '{ code: string; title: string; module: string; description: string; }'.
+      Types of property 'description' are incompatible.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/pages/story-detail/StoryDetailPage.tsx(221,8): error TS2741: Property 'description' is missing in type '{ open: boolean; onOpenChange: () => void; title: string; onConfirm: (comment: string) => void; }' but required in type 'CommentDialogProps'.
+src/pages/tasks/components/TasksTable.tsx(204,22): error TS2304: Cannot find name 'CheckSquare'.
+src/pages/tasks/TasksPage.tsx(25,5): error TS2339: Property 'navigate' does not exist on type '{ tasks: (TrackedTask & { storyData: Story; })[]; activeStories: Story[]; getMemberById: (id: string) => TeamMember | undefined; selectedStoryId: string; ... 18 more ...; handleConfirmArchive: (comment: string) => void; }'.
+src/pages/tasks/TasksPage.tsx(67,9): error TS2322: Type '{ taskId: string; storyId: string; data: Partial<TrackedTask>; } | null' is not assignable to type '{ task: TrackedTask; comment: string; } | null'.
+  Type '{ taskId: string; storyId: string; data: Partial<TrackedTask>; }' is missing the following properties from type '{ task: TrackedTask; comment: string; }': task, comment
+src/pages/tasks/TasksPage.tsx(68,9): error TS2322: Type 'Dispatch<SetStateAction<{ taskId: string; storyId: string; data: Partial<TrackedTask>; } | null>>' is not assignable to type '(v: { task: TrackedTask; comment: string; } | null) => void'.
+  Types of parameters 'value' and 'v' are incompatible.
+    Type '{ task: TrackedTask; comment: string; } | null' is not assignable to type 'SetStateAction<{ taskId: string; storyId: string; data: Partial<TrackedTask>; } | null>'.
+      Type '{ task: TrackedTask; comment: string; }' is not assignable to type 'SetStateAction<{ taskId: string; storyId: string; data: Partial<TrackedTask>; } | null>'.
+src/pages/tasks/TasksPage.tsx(71,9): error TS2322: Type 'Dispatch<SetStateAction<{ taskId: string; title: string; storyId: string; } | null>>' is not assignable to type '(v: { taskId: string; title: string; } | null) => void'.
+  Types of parameters 'value' and 'v' are incompatible.
+    Type '{ taskId: string; title: string; } | null' is not assignable to type 'SetStateAction<{ taskId: string; title: string; storyId: string; } | null>'.
+      Type '{ taskId: string; title: string; }' is not assignable to type 'SetStateAction<{ taskId: string; title: string; storyId: string; } | null>'.
+        Property 'storyId' is missing in type '{ taskId: string; title: string; }' but required in type '{ taskId: string; title: string; storyId: string; }'.
+src/pages/team/components/TeamFilters.tsx(1,18): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/team/components/TeamFilters.tsx(1,26): error TS6133: 'BarChart2' is declared but its value is never read.
+src/pages/team/components/TeamHeader.tsx(10,30): error TS6133: 'memberCount' is declared but its value is never read.
+ ELIFECYCLE  Command failed with exit code 2.

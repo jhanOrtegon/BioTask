@@ -1,5 +1,5 @@
 type PulseEvent = {
-  type: 'TASK_BLOCKED' | 'TASK_COMPLETED' | 'METRIC_ALERT' | 'STORY_STARTED' | 'SPRINT_VITAL';
+  type: 'TASK_BLOCKED' | 'TASK_COMPLETED' | 'METRIC_ALERT' | 'STORY_STARTED' | 'SPRINT_METRIC';
   title: string;
   description: string;
   user?: string;

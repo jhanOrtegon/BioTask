@@ -1,47 +1,56 @@
-# Reglas Globales de TaskCraft
+# BioTask Global Rules
 
-Este proyecto utiliza **Feature-Sliced Design (FSD)** adaptado para React + Vite con el fin de maximizar la mantenibilidad y **reducir drásticamente el uso de tokens de IA**.
+This project uses **Feature-Sliced Design (FSD)** adapted for React + Vite to maximize maintainability and **drastically reduce AI token usage**.
 
-## 🔴 REGLA MAESTRA (Ahorro de Tokens)
-**NUNCA** leas el proyecto entero. Si modificas una Feature concreta, **SÓLO** debes referenciar la documentación específica de esa feature que se encuentra en `.agents/features/[nombre-feature]-agent.md`.
-Si quieres entender la arquitectura base, lee este archivo (`rules.md`).
+## 🔴 MASTER RULE (Token Saving)
+**NEVER** read the entire project. If you modify a specific Feature, **ONLY** reference the specific documentation for that feature found in `.agents/features/[feature-name]-agent.md`.
+To understand the base architecture, read this file (`rules.md`).
 
-## Estándares del Código
-1. **Lenguaje:** TypeScript (`.ts`, `.tsx`). NUNCA uses JavaScript puro.
-2. **UI:** Utilizamos Shadcn UI y Tailwind CSS. Si necesitas un componente visual, primero intenta importarlo de `src/shared/ui/`.
-   - NUNCA inventes nombres de clases CSS sueltas (como `.btn-primary`). Usa clases de Tailwind.
-3. **Estado:** Usamos `Zustand`. Cada "feature" tiene su propio Store independiente en `src/features/[feature]/store.ts`. No uses Context API a menos que sea estrictamente necesario.
-4. **Clean Code:** 
-   - Funciones cortas y autodescriptivas.
-   - Tipado estricto en interfaces en la carpeta `types.ts` de cada feature.
-   - Los componentes de UI NO deben tener lógica de negocio pesada, delega la lógica en `utils.ts` o en custom hooks.
+## 🛠 Technical Standards (Strict)
+1.  **NO `any` TYPE:** The use of `any` is strictly prohibited. Always use specific interfaces, types, or `unknown` (if the type is truly dynamic).
+2.  **MAX 400 LINES:** No component or file should exceed 400 lines. If it does, it **MUST** be refactored into smaller sub-components or utility functions.
+3.  **ENGLISH CODE / SPANISH UI:**
+    - All **code** (variable names, functions, classes, components, technical comments) must be in **English**.
+    - All **UI text** (labels, buttons, placeholders, messages, notifications) must be in **Spanish**.
+    - *Example:* `const taskList = ...` (English code) vs `<h2>Lista de Tareas</h2>` (Spanish UI).
+4.  **Language & Framework:** TypeScript (`.ts`, `.tsx`) ONLY. Never use plain JavaScript.
+5.  **UI:** Use Shadcn UI and Tailwind CSS.
+    - NEVER create ad-hoc CSS classes. Use Tailwind utility classes.
+    - Check `src/shared/ui/` before creating new UI elements.
+6.  **State Management:** Use `Zustand`. Each feature has its own independent Store in `src/features/[feature]/store.ts`.
+7.  **Clean Code:**
+    - Short, self-descriptive functions.
+    - Strict typing in `types.ts` within each feature folder.
+    - UI components should NOT contain heavy business logic; delegate to `utils.ts` or custom hooks.
 
-## Agentes de Feature Disponibles
-| Feature | Archivo de Agente | Scope |
+## Available Feature Agents
+| Feature | Agent File | Scope |
 |---|---|---|
-| Auth | `.agents/features/auth-agent.md` | Autenticación, guardias de ruta |
-| Sprints | `.agents/features/sprints-agent.md` | Ciclo de vida de sprints, asignación de stories |
-| Stories | `.agents/features/stories-agent.md` | CRUD de stories, tareas anidadas, timers, auditoría |
-| Tasks | `.agents/features/tasks-agent.md` | Editor de tareas draft, generación Jira |
-| Templates | `.agents/features/templates-agent.md` | Plantillas reutilizables para tareas |
+| Auth | `.agents/features/auth-agent.md` | Authentication, route guards |
+| Sprints | `.agents/features/sprints-agent.md` | Sprint lifecycle, story assignment |
+| Stories | `.agents/features/stories-agent.md` | Stories CRUD, nested tasks, timers, audit |
+| Tasks | `.agents/features/tasks-agent.md` | Task draft editor, Jira generation |
+| Templates | `.agents/features/templates-agent.md` | Reusable task templates |
+| Epics | `.agents/features/epics-agent.md` | Epic management |
 
-## Estructura del Proyecto
+## Project Structure
 ```
 src/
-  features/          ← Cada feature es un módulo aislado
-    auth/            ← Autenticación (store + guardias de ruta)
-    sprints/         ← Gestión de sprints
-    stories/         ← Agregado principal (stories + tasks + timers + audit)
-    tasks/           ← Editor draft de tareas + exportación Jira
-    templates/       ← Plantillas predefinidas de tareas
-  pages/             ← Páginas que consumen features
-  shared/ui/         ← Componentes reutilizables (Shadcn UI)
-  shared/utils/      ← Utilidades compartidas
+  features/          ← Each feature is an isolated module
+    auth/            ← Authentication
+    sprints/         ← Sprint management
+    stories/         ← Stories + tasks + timers
+    tasks/           ← Draft editor + Jira export
+    templates/       ← Predefined templates
+    epics/           ← High-level planning
+  pages/             ← Pages consuming features
+  shared/ui/         ← UI components (Shadcn UI)
+  shared/utils/      ← Shared utilities
 ```
 
-## Flujo para resolver un issue:
-1. Identifica a qué Feature (`src/features/*`) o pieza compartida (`src/shared/*`) pertenece el cambio.
-2. Lee el archivo `-agent.md` correspondiente en `.agents/features/`.
-3. Edita ÚNICAMENTE los archivos de esa feature.
-4. Si el cambio afecta una página, consulta `src/pages/` pero limita cambios al mínimo necesario.
-5. Si necesitas un componente visual nuevo, primero verifica si existe en `src/shared/ui/`.
+## Workflow for Resolving Issues
+1. Identify which Feature (`src/features/*`) or Shared piece (`src/shared/*`) the change belongs to.
+2. Read the corresponding `-agent.md` file in `.agents/features/`.
+3. Edit **ONLY** the files within that feature's scope.
+4. If the change affects a page, check `src/pages/` but keep changes minimal.
+5. If you need a new visual component, check `src/shared/ui/` first.

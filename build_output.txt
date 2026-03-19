@@ -1,0 +1,8 @@
+
+> frontend@0.0.0 build C:\Users\Jhankee\OneDrive\Desktop\REPOSITORYS\PERSONAL\BioTask\frontend
+> tsc -b && vite build
+
+src/pages/planner/components/PlannerSidebar.tsx(2,10): error TS6133: 'BarChart3' is declared but its value is never read.
+src/pages/planner/SprintPlannerPage.tsx(20,28): error TS6133: 'setSelectedSprintId' is declared but its value is never read.
+src/pages/stories/components/StoriesTable.tsx(15,65): error TS6133: 'Ban' is declared but its value is never read.
+ ELIFECYCLE  Command failed with exit code 2.
