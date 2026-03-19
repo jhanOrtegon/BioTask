@@ -17,7 +17,6 @@ import {
  History,
  Terminal,
  Cpu,
- Fingerprint
 } from "lucide-react"
 
 export interface NavItem {
