@@ -24,30 +24,45 @@ export interface ChecklistItem {
 
 // -- Tracked task within a story --
 export interface TrackedTask {
- id: string
- code?: string
- techPrefix?: 'BE-' | 'FE-' | 'LEAD-' | 'QA-' | 'DS-' | 'UT-' | 'API-' | 'SEC-'
- storyId: string
- templateId?: string
- title: string
- type: TaskType
- featureName?: string
- screenPath?: string
- data: SectionData
- jiraContent?: string
- status: 'pending' | 'in_progress' | 'qa' | 'completed' | 'archived' | 'blocked'
- priority?: 'low' | 'medium' | 'high' | 'urgent'
- isBlocked?: boolean
- dueDate?: string
- checklists?: ChecklistItem[]
- timeSpent?: number // In seconds
- estimatedHours?: number
- sprintId?: string
- assignedTo?: string // TeamMember ID
- timeLogs?: TimeLog[]
- position: number // For manual reordering
- createdAt: string
- updatedAt: string
+  id: string;
+  code?: string;
+  techPrefix?:
+    | "BE-"
+    | "FE-"
+    | "LEAD-"
+    | "QA-"
+    | "DS-"
+    | "UT-"
+    | "API-"
+    | "SEC-";
+  storyId: string;
+  templateId?: string;
+  title: string;
+  type: TaskType;
+  featureName?: string;
+  screenPath?: string;
+  data: SectionData;
+  jiraContent?: string;
+  status:
+    | "pending"
+    | "in_progress"
+    | "qa"
+    | "completed"
+    | "archived"
+    | "blocked";
+  priority?: "low" | "medium" | "high" | "urgent";
+  isBlocked?: boolean;
+  blockReason?: string;
+  dueDate?: string;
+  checklists?: ChecklistItem[];
+  timeSpent?: number; // In seconds
+  estimatedHours?: number;
+  sprintId?: string;
+  assignedTo?: string; // TeamMember ID
+  timeLogs?: TimeLog[];
+  position: number; // For manual reordering
+  createdAt: string;
+  updatedAt: string;
 }
 
 // -- Audit Entry --

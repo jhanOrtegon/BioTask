@@ -30,19 +30,71 @@ const TasksPage = lazyPage(() => import('@/pages/tasks/TasksPage'), 'TasksPage')
 const SprintsPage = lazyPage(() => import('@/pages/sprints/SprintsPage'), 'SprintsPage')
 const SprintPlannerPage = lazyPage(() => import('@/pages/planner/SprintPlannerPage'), 'SprintPlannerPage')
 const TeamPage = lazyPage(() => import('@/pages/team/TeamPage'), 'TeamPage')
-const EpicsPage = lazyPage(() => import('@/pages/epics/EpicsPage'), 'EpicsPage')
-const AnalyticsPage = lazyPage(() => import('@/pages/analytics/AnalyticsPage'), 'AnalyticsPage')
-const HealthPage = lazyPage(() => import('@/pages/analytics/HealthPage'), 'HealthPage')
-const LoadPage = lazyPage(() => import('@/pages/analytics/LoadPage'), 'LoadPage')
-const PerformancePage = lazyPage(() => import('@/pages/analytics/PerformancePage'), 'PerformancePage')
-const OperationalPulsePage = lazyPage(() => import('@/pages/monitoring/OperationalPulsePage'), 'OperationalPulsePage')
-const MemberDetailPage = lazyPage(() => import('@/pages/monitoring/MemberDetailPage'), 'MemberDetailPage')
-const ActivityLogPage = lazyPage(() => import('@/pages/monitoring/ActivityLogPage'), 'ActivityLogPage')
-const ActivityDetailPage = lazyPage(() => import('@/pages/monitoring/ActivityDetailPage'), 'ActivityDetailPage')
-const TaskDetailPage = lazyPage(() => import('@/pages/tasks/TaskDetailPage'), 'TaskDetailPage')
-const TaskFormPage = lazyPage(() => import('@/pages/tasks/TaskFormPage'), 'TaskFormPage')
-const WikiPage = lazyPage(() => import('@/pages/wiki/WikiPage'), 'WikiPage')
-const SecurityPage = lazyPage(() => import('@/pages/settings/SecurityPage'), 'SecurityPage')
+const TeamsModulePage = lazyPage(
+  () => import("@/pages/teams/TeamsModulePage"),
+  "TeamsModulePage",
+);
+const TeamDetailPage = lazyPage(
+  () => import("@/pages/teams/TeamDetailPage"),
+  "TeamDetailPage",
+);
+const EpicsPage = lazyPage(
+  () => import("@/pages/epics/EpicsPage"),
+  "EpicsPage",
+);
+const AnalyticsPage = lazyPage(
+  () => import("@/pages/analytics/AnalyticsPage"),
+  "AnalyticsPage",
+);
+const HealthPage = lazyPage(
+  () => import("@/pages/analytics/HealthPage"),
+  "HealthPage",
+);
+const LoadPage = lazyPage(
+  () => import("@/pages/analytics/LoadPage"),
+  "LoadPage",
+);
+const PerformancePage = lazyPage(
+  () => import("@/pages/analytics/PerformancePage"),
+  "PerformancePage",
+);
+const OperationalPulsePage = lazyPage(
+  () => import("@/pages/monitoring/OperationalPulsePage"),
+  "OperationalPulsePage",
+);
+const DailyScrumPage = lazyPage(
+  () => import("@/pages/monitoring/DailyScrumPage"),
+  "DailyScrumPage",
+);
+const DailyMemberHistoryPage = lazyPage(
+  () => import("@/pages/monitoring/DailyMemberHistoryPage"),
+  "DailyMemberHistoryPage",
+);
+const MemberDetailPage = lazyPage(
+  () => import("@/pages/monitoring/MemberDetailPage"),
+  "MemberDetailPage",
+);
+const ActivityLogPage = lazyPage(
+  () => import("@/pages/monitoring/ActivityLogPage"),
+  "ActivityLogPage",
+);
+const ActivityDetailPage = lazyPage(
+  () => import("@/pages/monitoring/ActivityDetailPage"),
+  "ActivityDetailPage",
+);
+const TaskDetailPage = lazyPage(
+  () => import("@/pages/tasks/TaskDetailPage"),
+  "TaskDetailPage",
+);
+const TaskFormPage = lazyPage(
+  () => import("@/pages/tasks/TaskFormPage"),
+  "TaskFormPage",
+);
+const WikiPage = lazyPage(() => import("@/pages/wiki/WikiPage"), "WikiPage");
+const SecurityPage = lazyPage(
+  () => import("@/pages/settings/SecurityPage"),
+  "SecurityPage",
+);
 
 function App() {
   return (
@@ -50,7 +102,8 @@ function App() {
       <Toaster
         position="top-center"
         toastOptions={{
-          className: 'border border-border/60 bg-card/90 backdrop-blur-lg text-foreground shadow-lg rounded-xl p-4 font-medium',
+          className:
+            "border border-border/60 bg-card/90 backdrop-blur-lg text-foreground shadow-lg rounded-xl p-4 font-medium",
           duration: 4000,
         }}
         richColors
@@ -66,16 +119,27 @@ function App() {
               </Route>
 
               {/* Rutas compartidas (Admin y Editor) */}
-              <Route element={<ProtectedRoute allowedRoles={['Administrador', 'Editor']} />}>
+              <Route
+                element={
+                  <ProtectedRoute allowedRoles={["Administrador", "Editor"]} />
+                }
+              >
                 <Route element={<MainLayout />}>
                   <Route index element={<Dashboard />} />
                   <Route path="templates" element={<TemplatesPage />} />
                   <Route path="editor" element={<EditorPage />} />
-                  <Route path="editor/:storyId/:taskId" element={<EditorPage />} />
+                  <Route
+                    path="editor/:storyId/:taskId"
+                    element={<EditorPage />}
+                  />
                   <Route path="wiki" element={<WikiPage />} />
- 
+
                   {/* Rutas exclusivas de Administrador (dentro del mismo layout) */}
-                  <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
+                  <Route
+                    element={
+                      <ProtectedRoute allowedRoles={["Administrador"]} />
+                    }
+                  >
                     <Route path="stories" element={<StoriesPage />} />
                     <Route path="epics" element={<EpicsPage />} />
                     <Route path="stories/:id" element={<StoryDetailPage />} />
@@ -87,21 +151,49 @@ function App() {
                     <Route path="board" element={<BoardPage />} />
                     <Route path="planner" element={<SprintPlannerPage />} />
                     <Route path="team" element={<TeamPage />} />
-                    
+                    <Route path="teams" element={<TeamsModulePage />} />
+                    <Route path="teams/:teamId" element={<TeamDetailPage />} />
+
                     {/* Rutas de Monitoreo */}
-                    <Route path="monitoring/live" element={<OperationalPulsePage />} />
-                    <Route path="monitoring/live/:id" element={<MemberDetailPage />} />
-                    <Route path="monitoring/activity" element={<ActivityLogPage />} />
-                    <Route path="monitoring/activity/:id" element={<ActivityDetailPage />} />
+                    <Route
+                      path="monitoring/live"
+                      element={<OperationalPulsePage />}
+                    />
+                    <Route
+                      path="monitoring/daily"
+                      element={<DailyScrumPage />}
+                    />
+                    <Route
+                      path="monitoring/daily/:id"
+                      element={<DailyMemberHistoryPage />}
+                    />
+                    <Route
+                      path="monitoring/live/:id"
+                      element={<MemberDetailPage />}
+                    />
+                    <Route
+                      path="monitoring/activity"
+                      element={<ActivityLogPage />}
+                    />
+                    <Route
+                      path="monitoring/activity/:id"
+                      element={<ActivityDetailPage />}
+                    />
 
                     {/* Rutas de Configuración y Seguridad */}
-                    <Route path="settings/security" element={<SecurityPage />} />
- 
+                    <Route
+                      path="settings/security"
+                      element={<SecurityPage />}
+                    />
+
                     {/* Rutas de Reportes */}
                     <Route path="analytics" element={<AnalyticsPage />} />
                     <Route path="analytics/health" element={<HealthPage />} />
                     <Route path="analytics/load" element={<LoadPage />} />
-                    <Route path="analytics/performance" element={<PerformancePage />} />
+                    <Route
+                      path="analytics/performance"
+                      element={<PerformancePage />}
+                    />
                   </Route>
                 </Route>
               </Route>
@@ -113,7 +205,7 @@ function App() {
         </BrowserRouter>
       </TooltipProvider>
     </div>
-  )
+  );
 }
 
 export default App
